@@ -2,8 +2,9 @@
 
 import type { ReactNode } from "react";
 import type { AstrologerItem, SiteConfig } from "@/lib/site-config";
+import { uploadPublicFile } from "@/lib/supabase";
 import { useSiteConfig } from "@/lib/use-site-config";
-import { AlertCircle, Plus, RotateCcw, Save } from "lucide-react";
+import { AlertCircle, LogOut, Plus, RotateCcw, Save, Upload } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -101,6 +102,32 @@ export function AdminShell() {
     await reload();
   };
 
+  const handleLogout = async () => {
+    await fetch("/api/admin-auth", { method: "DELETE" });
+    window.location.href = "/admin-login";
+  };
+
+  const handleImageUpload = async (index: number, file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    setStatus(null);
+    try {
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "astrologer-images";
+      const extension = file.name.split(".").pop() || "jpg";
+      const path = `astrologers/${Date.now()}-${index}.${extension}`;
+      const publicUrl = await uploadPublicFile(bucket, path, file);
+      updateAstrologer(index, {
+        ...workingConfig.astrologers[index],
+        photoUrl: publicUrl
+      });
+      setStatus("Image uploaded to Supabase Storage. Click Save to Supabase to store the image URL in the astrologers table.");
+    } catch (uploadError) {
+      setStatus(uploadError instanceof Error ? uploadError.message : "Image upload failed.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-midnight text-white">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -133,6 +160,14 @@ export function AdminShell() {
             >
               <RotateCcw className="h-4 w-4" />
               Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              Log out
             </button>
           </div>
         </div>
@@ -209,6 +244,18 @@ export function AdminShell() {
                     value={item.photoUrl}
                     onChange={(value) => updateAstrologer(index, { ...item, photoUrl: value })}
                   />
+                  <label className="text-sm text-slate-300">
+                    Upload astrologer photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => void handleImageUpload(index, event.target.files?.[0] ?? null)}
+                      className="mt-2 block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-stardust file:px-4 file:py-2 file:text-sm file:font-semibold file:text-midnight"
+                    />
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    This uploads to the Supabase Storage bucket in <code>NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET</code>.
+                  </p>
                   <EditorInput label="UPI ID" value={item.upiId} onChange={(value) => updateAstrologer(index, { ...item, upiId: value })} />
                   <EditorInput
                     label="Instagram"

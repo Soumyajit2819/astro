@@ -55,3 +55,22 @@ export async function insertRows<T>(table: string, rows: T[]) {
   });
   return handleResponse<T[]>(response);
 }
+
+export async function uploadPublicFile(bucket: string, path: string, file: File) {
+  const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
+    method: "POST",
+    headers: {
+      apikey: supabaseAnonKey || "",
+      Authorization: `Bearer ${supabaseAnonKey || ""}`,
+      "x-upsert": "true"
+    },
+    body: file
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "File upload failed.");
+  }
+
+  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+}

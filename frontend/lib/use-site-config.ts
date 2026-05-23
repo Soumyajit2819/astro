@@ -161,6 +161,23 @@ function astrologerRowsExtended(astrologers: AstrologerItem[]) {
   }));
 }
 
+function serviceRowsBase(services: ServiceItem[]) {
+  return services.map((item) => ({
+    title: item.name,
+    description: item.description,
+    price: item.price
+  }));
+}
+
+function serviceRowsExtended(services: ServiceItem[]) {
+  return services.map((item) => ({
+    title: item.name,
+    description: item.description,
+    price: item.price,
+    type: item.type
+  }));
+}
+
 export function useSiteConfig() {
   const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
   const [ready, setReady] = useState(false);
@@ -222,16 +239,16 @@ export function useSiteConfig() {
             "Astrologer base details saved. To save UPI, title, address, and social links too, add those columns to the astrologers table.";
         }
 
+        try {
+          await insertRows("services", serviceRowsExtended(nextConfig.services));
+        } catch {
+          await insertRows("services", serviceRowsBase(nextConfig.services));
+          warning = warning
+            ? `${warning} Services saved without the type field. Add a type column to the services table if you want consultation/class separation stored in Supabase.`
+            : "Services saved without the type field. Add a type column to the services table if you want consultation/class separation stored in Supabase.";
+        }
+
         await Promise.all([
-          insertRows(
-            "services",
-            nextConfig.services.map((item) => ({
-              title: item.name,
-              description: item.description,
-              price: item.price,
-              type: item.type
-            }))
-          ),
           insertRows(
             "schedule",
             nextConfig.schedule.map((item) => ({

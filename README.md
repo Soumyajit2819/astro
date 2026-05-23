@@ -12,7 +12,9 @@ Simple astrology consultation and class website built with:
 - `frontend/lib/site-config.ts`: fallback content and shared app types
 - `frontend/lib/supabase.ts`: direct Supabase REST client
 - `docs/supabase-astrologer-columns.sql`: optional extra columns for UPI and social links
+- `docs/supabase-services-columns.sql`: optional type column for consultation/class separation
 - `docs/supabase-quick-test-policies.sql`: quick open-access policies for testing only
+- `docs/supabase-storage-setup.sql`: Supabase Storage bucket and policies for astrologer image upload
 
 ## Local setup
 
@@ -47,11 +49,20 @@ npm run dev
 
 or copy the SQL from [docs/supabase-astrologer-columns.sql](/Users/apple/astro/docs/supabase-astrologer-columns.sql) into the Supabase SQL editor.
 
+If your `services` table is missing the `type` column, run:
+
+```sql
+alter table public.services add column if not exists type text;
+```
+
+or use [docs/supabase-services-columns.sql](/Users/apple/astro/docs/supabase-services-columns.sql).
+
 4. If Supabase blocks browser reads or writes because of RLS, use the quick testing SQL in [docs/supabase-quick-test-policies.sql](/Users/apple/astro/docs/supabase-quick-test-policies.sql).
+5. If you want direct astrologer image upload from `/admin`, create the storage bucket and policies using [docs/supabase-storage-setup.sql](/Users/apple/astro/docs/supabase-storage-setup.sql).
 
 ## Security note
 
-The current `/admin` page is a live editor but it is not authenticated yet. For quick testing, it can save to Supabase directly from the browser. For production, the next step should be adding real admin login and write protection.
+The current `/admin` page is protected by a passcode cookie gate. Set `ADMIN_PASSCODE` in Vercel and locally. For stronger production security, the next step after this is replacing the shared anon-write setup with admin-only Supabase auth and stricter RLS rules.
 
 ## Editing content
 
