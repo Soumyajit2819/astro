@@ -1,0 +1,57 @@
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+function getHeaders() {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase environment variables are missing.");
+  }
+
+  return {
+    apikey: supabaseAnonKey,
+    Authorization: `Bearer ${supabaseAnonKey}`,
+    "Content-Type": "application/json",
+    Prefer: "return=representation"
+  };
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Supabase request failed.");
+  }
+
+  return (await response.json()) as T;
+}
+
+export async function selectRows<T>(table: string) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=*`, {
+    headers: getHeaders(),
+    cache: "no-store"
+  });
+  return handleResponse<T[]>(response);
+}
+
+export async function deleteAllRows(table: string, filterColumn: string) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${filterColumn}=not.is.null`, {
+    method: "DELETE",
+    headers: getHeaders()
+  });
+
+  if (!response.ok && response.status !== 404) {
+    const text = await response.text();
+    throw new Error(text || `Failed to clear ${table}.`);
+  }
+}
+
+export async function insertRows<T>(table: string, rows: T[]) {
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(rows)
+  });
+  return handleResponse<T[]>(response);
+}

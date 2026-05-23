@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background-image: radial-gradient(circle at top, rgba(250, 204, 21, 0.06), transparent 30%),
+    radial-gradient(circle at 0% 30%, rgba(56, 189, 248, 0.08), transparent 20%),
+    linear-gradient(160deg, #050816 0%, #0d1328 45%, #10182f 100%);
+}
+
+section {
+  position: relative;
+}
+
+section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.06), transparent 20%);
+}
