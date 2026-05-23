@@ -37,7 +37,10 @@ type ScheduleRow = {
   teacher?: string;
   class_date?: string;
   class_time?: string;
+  course_duration?: string;
   type?: string;
+  mode?: string;
+  platform?: string;
 };
 
 type FaqRow = {
@@ -102,7 +105,10 @@ function mapSchedule(rows: ScheduleRow[]): ScheduleItem[] {
     teacher: row.teacher || "",
     classDate: row.class_date || "",
     classTime: row.class_time || "",
-    type: row.type || ""
+    courseDuration: row.course_duration || "",
+    type: row.type || "",
+    mode: row.mode || "",
+    platform: row.platform || ""
   }));
 }
 
@@ -256,7 +262,10 @@ export function useSiteConfig() {
               teacher: item.teacher,
               class_date: item.classDate,
               class_time: item.classTime,
-              type: item.type
+              course_duration: item.courseDuration,
+              type: item.type,
+              mode: item.mode,
+              platform: item.platform
             }))
           ),
           insertRows(

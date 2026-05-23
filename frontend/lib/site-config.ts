@@ -28,7 +28,10 @@ export type ScheduleItem = {
   teacher: string;
   classDate: string;
   classTime: string;
+  courseDuration: string;
   type: string;
+  mode: string;
+  platform: string;
 };
 
 export type FaqItem = {
@@ -108,7 +111,10 @@ export const defaultSiteConfig: SiteConfig = {
       teacher: "Teacher A",
       classDate: "Tuesday",
       classTime: "7:00 PM - 8:30 PM",
-      type: "Online"
+      courseDuration: "4 months",
+      type: "Theory",
+      mode: "Online",
+      platform: "Google Meet"
     },
     {
       id: "schedule-2",
@@ -116,7 +122,10 @@ export const defaultSiteConfig: SiteConfig = {
       teacher: "Teacher B",
       classDate: "Sunday",
       classTime: "11:00 AM - 1:00 PM",
-      type: "Online / Offline"
+      courseDuration: "4 months",
+      type: "Practice",
+      mode: "Hybrid",
+      platform: "Zoom + Classroom"
     }
   ],
   faqs: [

@@ -187,9 +187,12 @@ export function SiteSections() {
                 <p className="text-sm uppercase tracking-[0.25em] text-aurora">{item.classDate}</p>
                 <h3 className="mt-3 font-display text-2xl text-white">{item.className}</h3>
                 <p className="mt-3 text-slate-300">{item.classTime}</p>
-                <p className="mt-2 text-sm text-slate-400">
-                  {item.teacher} • {item.type}
-                </p>
+                <div className="mt-3 grid gap-2 text-sm text-slate-400">
+                  <p>{item.teacher} • {item.type}</p>
+                  {item.mode ? <p>Mode: {item.mode}</p> : null}
+                  {item.platform ? <p>Platform: {item.platform}</p> : null}
+                  {item.courseDuration ? <p>Course Duration: {item.courseDuration}</p> : null}
+                </div>
               </div>
             ))}
           </div>

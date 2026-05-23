@@ -351,7 +351,10 @@ export function AdminShell() {
                       teacher: "",
                       classDate: "",
                       classTime: "",
-                      type: "Theory"
+                      courseDuration: "",
+                      type: "Theory",
+                      mode: "",
+                      platform: ""
                     }
                   ]
                 })
@@ -374,7 +377,18 @@ export function AdminShell() {
                     value={item.classTime}
                     onChange={(value) => updateSchedule(index, { ...item, classTime: value })}
                   />
+                  <EditorInput
+                    label="Course duration"
+                    value={item.courseDuration}
+                    onChange={(value) => updateSchedule(index, { ...item, courseDuration: value })}
+                  />
                   <EditorInput label="Type" value={item.type} onChange={(value) => updateSchedule(index, { ...item, type: value })} />
+                  <EditorInput label="Mode" value={item.mode} onChange={(value) => updateSchedule(index, { ...item, mode: value })} />
+                  <EditorInput
+                    label="Platform"
+                    value={item.platform}
+                    onChange={(value) => updateSchedule(index, { ...item, platform: value })}
+                  />
                   <DeleteButton onClick={() => removeSchedule(index)} />
                 </div>
               )}

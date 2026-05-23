@@ -59,7 +59,6 @@ or use [docs/supabase-services-columns.sql](/Users/apple/astro/docs/supabase-ser
 
 4. If Supabase blocks browser reads or writes because of RLS, use the quick testing SQL in [docs/supabase-quick-test-policies.sql](/Users/apple/astro/docs/supabase-quick-test-policies.sql).
 5. If you want direct astrologer image upload from `/admin`, create the storage bucket and policies using [docs/supabase-storage-setup.sql](/Users/apple/astro/docs/supabase-storage-setup.sql).
-
 ## Security note
 
 The current `/admin` page is protected by a passcode cookie gate. Set `ADMIN_PASSCODE` in Vercel and locally. For stronger production security, the next step after this is replacing the shared anon-write setup with admin-only Supabase auth and stricter RLS rules.
