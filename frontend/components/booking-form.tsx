@@ -18,6 +18,7 @@ const createBookingSchema = (services: ServiceItem[]) =>
       tob: z.string().optional(),
       pob: z.string().optional(),
       selectedServiceId: z.string().min(1, "Please select a service."),
+      paymentReference: z.string().optional(),
       paymentCompleted: z.boolean().refine((value) => value, {
         message: "Please confirm that the payment is completed before proceeding."
       }),
@@ -25,6 +26,15 @@ const createBookingSchema = (services: ServiceItem[]) =>
     })
     .superRefine((values, context) => {
       const selectedService = services.find((service) => service.id === values.selectedServiceId);
+
+      if (!values.paymentReference || values.paymentReference.trim().length < 6) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentReference"],
+          message: "Enter the UPI transaction ID or payment reference."
+        });
+      }
+
       if (selectedService?.type === "class") {
         return;
       }
@@ -84,6 +94,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       tob: "",
       pob: "",
       selectedServiceId: config.services[0]?.id ?? "",
+      paymentReference: "",
       paymentCompleted: false,
       message: ""
     }
@@ -110,6 +121,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       `Hello ${mainAstrologer.name},`,
       `Payment done confirmation for: ${service.name}`,
       `Amount paid: Rs. ${service.price}`,
+      `UPI Ref No: ${values.paymentReference}`,
       `Name: ${values.fullName}`,
       `Phone: ${values.phoneNumber}`,
       `Email: ${values.email}`
@@ -172,14 +184,14 @@ export function BookingForm({ config }: { config: SiteConfig }) {
             <p>1. Select the service or consultation amount.</p>
             <p>2. Fill your contact details{requiresBirthDetails ? " and birth details" : ""}.</p>
             <p>3. Scan the QR for the exact amount shown here.</p>
-            <p>4. Mark payment completed, then proceed to astrologer confirmation.</p>
+            <p>4. Enter your UPI transaction ID, mark payment completed, then proceed.</p>
           </div>
         </div>
 
         <div className="rounded-[1.5rem] border border-gold/25 bg-gold/10 p-5">
           <div className="flex items-center gap-2 text-gold">
             <QrCode className="h-4 w-4" />
-            <p className="text-sm font-semibold uppercase tracking-[0.2em]">Dynamic Payment QR</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em]">Dynamic Payment QR <span className="text-ember">*</span></p>
           </div>
           <div className="mt-4 rounded-[1.5rem] bg-white p-4">
             <img src={qrSource} alt={`Payment QR for Rs. ${selectedService?.price ?? 0}`} className="mx-auto h-56 w-56 rounded-2xl object-contain" />
@@ -189,6 +201,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           </p>
           <p className="mt-1 font-display text-3xl text-sage">Rs. {selectedService?.price ?? 0}</p>
           <p className="mt-2 text-sm text-sage/75">{selectedService?.description}</p>
+          <p className="mt-3 text-xs font-medium text-ember">Proceed only after real payment. UPI reference number is required.</p>
         </div>
       </div>
 
@@ -247,6 +260,14 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           </>
         ) : null}
 
+        <RequiredInput
+          label="UPI Transaction ID / Reference Number"
+          placeholder="Enter the payment reference number"
+          register={form.register("paymentReference")}
+          className={inputClass}
+        />
+        <FieldError message={form.formState.errors.paymentReference?.message} />
+
         <label className="text-sm font-medium text-sage">
           Additional Message
           <textarea
@@ -268,7 +289,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
             />
             <span>
               I have completed the payment of <strong>Rs. {selectedService?.price ?? 0}</strong> using the QR shown
-              above. Only after this confirmation can I proceed to the next step.
+              above, and I have entered the correct UPI reference number. Only after this can I proceed.
             </span>
           </label>
           <FieldError message={form.formState.errors.paymentCompleted?.message} />
@@ -277,7 +298,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         <div>
           <button
             type="submit"
-            disabled={!form.watch("paymentCompleted")}
+            disabled={!form.watch("paymentCompleted") || !form.watch("paymentReference")?.trim()}
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-3 font-semibold text-ivory transition hover:bg-sage/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <MessageCircle className="h-4 w-4" />
