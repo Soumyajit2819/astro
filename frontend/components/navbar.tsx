@@ -7,8 +7,7 @@ import { useState } from "react";
 const links = [
   ["About", "#about"],
   ["Services", "#services"],
-  ["Pricing", "#pricing"],
-  ["Courses", "#courses"],
+  ["Schedule", "#schedule"],
   ["Testimonials", "#testimonials"],
   ["FAQ", "#faq"],
   ["Contact", "#contact"]
@@ -18,22 +17,22 @@ export function Navbar({ brandName }: { brandName: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-midnight/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-sage/10 bg-ivory/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 text-white">
-          <Sparkles className="h-5 w-5 text-stardust" />
+        <Link href="/" className="flex items-center gap-2 text-sage">
+          <Sparkles className="h-5 w-5 text-gold" />
           <span className="font-display text-lg font-semibold">{brandName}</span>
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
           {links.map(([label, href]) => (
-            <a key={href} href={href} className="text-sm text-slate-300 transition hover:text-white">
+            <a key={href} href={href} className="text-sm text-sage/80 transition hover:text-sage">
               {label}
             </a>
           ))}
           <a
             href="#booking"
-            className="rounded-full bg-stardust px-4 py-2 text-sm font-semibold text-midnight transition hover:bg-yellow-300"
+            className="rounded-full bg-sage px-4 py-2 text-sm font-semibold text-ivory transition hover:bg-sage/90"
           >
             Book Consultation
           </a>
@@ -42,7 +41,7 @@ export function Navbar({ brandName }: { brandName: string }) {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="rounded-full border border-white/10 p-2 text-white md:hidden"
+          className="rounded-full border border-sage/15 p-2 text-sage md:hidden"
           aria-label="Toggle navigation"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -50,16 +49,16 @@ export function Navbar({ brandName }: { brandName: string }) {
       </div>
 
       {open && (
-        <div className="border-t border-white/10 px-4 py-4 md:hidden">
+        <div className="border-t border-sage/10 px-4 py-4 md:hidden">
           <div className="flex flex-col gap-4">
             {links.map(([label, href]) => (
-              <a key={href} href={href} className="text-sm text-slate-300" onClick={() => setOpen(false)}>
+              <a key={href} href={href} className="text-sm text-sage/80" onClick={() => setOpen(false)}>
                 {label}
               </a>
             ))}
             <a
               href="#booking"
-              className="rounded-full bg-stardust px-4 py-2 text-center text-sm font-semibold text-midnight"
+              className="rounded-full bg-sage px-4 py-2 text-center text-sm font-semibold text-ivory"
               onClick={() => setOpen(false)}
             >
               Book Consultation

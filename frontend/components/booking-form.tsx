@@ -2,20 +2,38 @@
 
 import type { SiteConfig } from "@/lib/site-config";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Copy, MessageCircle } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const bookingSchema = z.object({
-  fullName: z.string().min(2, "Please enter your full name."),
+  fullName: z.string().min(2, "Please enter your name."),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
   email: z.string().email("Please enter a valid email."),
-  selectedServiceId: z.string().min(1, "Please select a service or class."),
+  dob: z.string().min(1, "Date of birth is required."),
+  tob: z.string().min(1, "Time of birth is required."),
+  pob: z.string().min(2, "Place of birth is required."),
+  selectedServiceId: z.string().min(1, "Please select a service."),
+  paymentCompleted: z.boolean().refine((value) => value, {
+    message: "Please confirm that the payment is completed before proceeding."
+  }),
   message: z.string().optional()
 });
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
+
+function buildUpiLink(upiId: string, name: string, amount: number, serviceName: string) {
+  const params = new URLSearchParams({
+    pa: upiId,
+    pn: name,
+    am: String(amount),
+    cu: "INR",
+    tn: `${serviceName} consultation payment`
+  });
+
+  return `upi://pay?${params.toString()}`;
+}
 
 export function BookingForm({ config }: { config: SiteConfig }) {
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -28,13 +46,23 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       fullName: "",
       phoneNumber: "",
       email: "",
+      dob: "",
+      tob: "",
+      pob: "",
       selectedServiceId: config.services[0]?.id ?? "",
+      paymentCompleted: false,
       message: ""
     }
   });
 
   const selectedServiceId = form.watch("selectedServiceId");
   const selectedService = config.services.find((service) => service.id === selectedServiceId) ?? config.services[0];
+
+  const upiLink = useMemo(() => {
+    return buildUpiLink(mainAstrologer.upiId, mainAstrologer.name, selectedService?.price ?? 0, selectedService?.name ?? "Consultation");
+  }, [mainAstrologer.name, mainAstrologer.upiId, selectedService?.name, selectedService?.price]);
+
+  const qrSource = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
 
   const onSubmit = form.handleSubmit((values) => {
     const service = config.services.find((item) => item.id === values.selectedServiceId);
@@ -46,12 +74,16 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     const whatsappText = encodeURIComponent(
       [
         `Hello ${mainAstrologer.name},`,
-        `I want to book: ${service.name}`,
+        `Payment done confirmation for: ${service.name}`,
+        `Amount paid: Rs. ${service.price}`,
         `Name: ${values.fullName}`,
         `Phone: ${values.phoneNumber}`,
         `Email: ${values.email}`,
+        `DOB: ${values.dob}`,
+        `TOB: ${values.tob}`,
+        `POB: ${values.pob}`,
         `Message: ${values.message || "N/A"}`,
-        `I have completed the UPI payment of Rs. ${service.price}. I will send the screenshot now.`
+        "Client has confirmed payment completion. Please follow up with the next step."
       ].join("\n")
     );
 
@@ -59,7 +91,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
 
     setConfirmation(
-      `UPI payment step ready for ${service.name}. Send your payment screenshot to ${mainAstrologer.phone} on WhatsApp so the astrologer can confirm your slot.`
+      `Payment marked complete for Rs. ${service.price}. The astrologer has the confirmation message draft, and your customer now sees that your team will reach out next.`
     );
   });
 
@@ -70,26 +102,25 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   };
 
   const inputClass =
-    "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-aurora";
+    "w-full rounded-2xl border border-sage/12 bg-white/80 px-4 py-3 text-sm text-sage outline-none transition placeholder:text-sage/40 focus:border-gold";
 
   return (
-    <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur sm:p-8">
+    <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow backdrop-blur sm:p-8">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h3 className="font-display text-2xl font-semibold text-white">Book Consultation or Class</h3>
-          <p className="mt-2 text-sm text-slate-300">
-            Choose a service, pay by UPI, and send the screenshot to the astrologer&apos;s WhatsApp for manual
-            confirmation.
+          <h3 className="font-display text-2xl font-semibold text-sage">Consultation Booking & Payment</h3>
+          <p className="mt-2 text-sm text-sage/75">
+            Fill every required detail, pay the exact service amount, confirm payment completion, then proceed to astrologer confirmation.
           </p>
         </div>
-        <div className="rounded-3xl border border-stardust/20 bg-stardust/10 p-4 text-sm text-stardust">
+        <div className="rounded-3xl border border-gold/25 bg-gold/10 p-4 text-sm text-sage">
           <p className="font-semibold">UPI ID</p>
           <div className="mt-2 flex items-center gap-3">
             <span>{mainAstrologer.upiId}</span>
             <button
               type="button"
               onClick={copyUpiId}
-              className="inline-flex items-center gap-1 rounded-full border border-stardust/30 px-3 py-1 text-xs"
+              className="inline-flex items-center gap-1 rounded-full border border-sage/15 px-3 py-1 text-xs"
             >
               <Copy className="h-3.5 w-3.5" />
               {copied ? "Copied" : "Copy"}
@@ -98,66 +129,127 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         </div>
       </div>
 
-      <div className="mb-6 rounded-[1.5rem] border border-white/10 bg-midnight/40 p-5">
-        <p className="text-sm uppercase tracking-[0.25em] text-aurora">Payment Flow</p>
-        <div className="mt-4 grid gap-3 text-sm text-slate-300">
-          <p>1. Select consultation or class</p>
-          <p>2. Pay the shown amount by UPI</p>
-          <p>3. Click submit and send the payment screenshot on WhatsApp</p>
-          <p>4. Astrologer confirms your class seat or consultation timing personally</p>
+      <div className="mb-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[1.5rem] border border-sage/10 bg-ivory/70 p-5">
+          <p className="text-sm uppercase tracking-[0.25em] text-gold">Required Flow</p>
+          <div className="mt-4 grid gap-3 text-sm text-sage/80">
+            <p>1. Select the service or consultation amount.</p>
+            <p>2. Fill name, email, phone, DOB, TOB, and POB.</p>
+            <p>3. Scan the QR for the exact amount shown here.</p>
+            <p>4. Mark payment completed, then proceed to astrologer confirmation.</p>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-gold/25 bg-gold/10 p-5">
+          <div className="flex items-center gap-2 text-gold">
+            <QrCode className="h-4 w-4" />
+            <p className="text-sm font-semibold uppercase tracking-[0.2em]">Dynamic Payment QR</p>
+          </div>
+          <div className="mt-4 rounded-[1.5rem] bg-white p-4">
+            <img src={qrSource} alt={`Payment QR for Rs. ${selectedService?.price ?? 0}`} className="mx-auto h-56 w-56 rounded-2xl object-contain" />
+          </div>
+          <p className="mt-4 text-sm text-sage/75">
+            Selected service: <span className="font-semibold text-sage">{selectedService?.name}</span>
+          </p>
+          <p className="mt-1 font-display text-3xl text-sage">Rs. {selectedService?.price ?? 0}</p>
+          <p className="mt-2 text-sm text-sage/75">{selectedService?.description}</p>
         </div>
       </div>
 
       <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
         <div className="sm:col-span-2">
-          <input className={inputClass} placeholder="Full name" {...form.register("fullName")} />
-          <FieldError message={form.formState.errors.fullName?.message} />
-        </div>
-        <div>
-          <input className={inputClass} placeholder="Phone number" {...form.register("phoneNumber")} />
-          <FieldError message={form.formState.errors.phoneNumber?.message} />
-        </div>
-        <div>
-          <input className={inputClass} placeholder="Email" {...form.register("email")} />
-          <FieldError message={form.formState.errors.email?.message} />
-        </div>
-        <div className="sm:col-span-2">
-          <select className={inputClass} {...form.register("selectedServiceId")}>
+          <select
+            className={inputClass}
+            {...form.register("selectedServiceId", {
+              onChange: () => {
+                form.setValue("paymentCompleted", false, { shouldValidate: true });
+                setConfirmation(null);
+              }
+            })}
+          >
             {config.services.map((service) => (
-              <option key={service.id} value={service.id} className="bg-nebula">
+              <option key={service.id} value={service.id}>
                 {service.name} - Rs. {service.price}
               </option>
             ))}
           </select>
           <FieldError message={form.formState.errors.selectedServiceId?.message} />
         </div>
-        <div className="sm:col-span-2 rounded-[1.5rem] border border-stardust/20 bg-stardust/10 p-4">
-          <p className="text-sm text-stardust">Selected payment amount</p>
-          <p className="mt-1 font-display text-3xl text-white">Rs. {selectedService?.price ?? 0}</p>
-          <p className="mt-2 text-sm text-slate-300">{selectedService?.description}</p>
+
+        <div className="sm:col-span-2">
+          <input className={inputClass} placeholder="Full name" {...form.register("fullName")} />
+          <FieldError message={form.formState.errors.fullName?.message} />
         </div>
+
+        <div>
+          <input className={inputClass} placeholder="Email address" {...form.register("email")} />
+          <FieldError message={form.formState.errors.email?.message} />
+        </div>
+        <div>
+          <input className={inputClass} placeholder="Phone number" {...form.register("phoneNumber")} />
+          <FieldError message={form.formState.errors.phoneNumber?.message} />
+        </div>
+
+        <div>
+          <input type="date" className={inputClass} {...form.register("dob")} />
+          <FieldError message={form.formState.errors.dob?.message} />
+        </div>
+        <div>
+          <input type="time" className={inputClass} {...form.register("tob")} />
+          <FieldError message={form.formState.errors.tob?.message} />
+        </div>
+
+        <div className="sm:col-span-2">
+          <input className={inputClass} placeholder="Place of birth" {...form.register("pob")} />
+          <FieldError message={form.formState.errors.pob?.message} />
+        </div>
+
         <div className="sm:col-span-2">
           <textarea
             className={`${inputClass} min-h-28 resize-none`}
-            placeholder="Additional message"
+            placeholder="Additional message (optional)"
             {...form.register("message")}
           />
         </div>
+
+        <div className="sm:col-span-2 rounded-[1.5rem] border border-sage/10 bg-ivory/65 p-4">
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-sage/80">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-sage/20 text-sage focus:ring-gold"
+              {...form.register("paymentCompleted")}
+            />
+            <span>
+              I have completed the payment of <strong>Rs. {selectedService?.price ?? 0}</strong> using the QR shown
+              above. Only after this confirmation can I proceed to the next step.
+            </span>
+          </label>
+          <FieldError message={form.formState.errors.paymentCompleted?.message} />
+        </div>
+
         <div className="sm:col-span-2">
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-stardust px-6 py-3 font-semibold text-midnight transition hover:bg-yellow-300"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-3 font-semibold text-ivory transition hover:bg-sage/90"
           >
             <MessageCircle className="h-4 w-4" />
-            Continue to WhatsApp Confirmation
+            Proceed to Astrologer Confirmation
           </button>
         </div>
       </form>
 
       {confirmation ? (
-        <div className="mt-5 flex items-start gap-3 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-300" />
-          <p>{confirmation}</p>
+        <div className="mt-5 rounded-3xl border border-gold/25 bg-gold/10 p-4 text-sm text-sage">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 text-gold" />
+            <div>
+              <p>{confirmation}</p>
+              <p className="mt-2 flex items-center gap-2 font-medium text-sage">
+                <ShieldCheck className="h-4 w-4 text-gold" />
+                Our team will reach you soon.
+              </p>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
