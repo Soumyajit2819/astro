@@ -4,16 +4,15 @@ import type { ReactNode } from "react";
 import { useSiteConfig } from "@/lib/use-site-config";
 import {
   CheckCircle2,
-  Clock3,
   Facebook,
   Flower2,
   Instagram,
-  MessageSquareQuote,
   Phone,
   Sparkles,
   Youtube
 } from "lucide-react";
 import { BookingForm } from "./booking-form";
+import { FeedbackForm } from "./feedback-form";
 import { Footer } from "./footer";
 import { Navbar } from "./navbar";
 import { SectionHeading } from "./section-heading";
@@ -33,10 +32,9 @@ export function SiteSections() {
         <HeroSection />
         <AboutSection />
         <ServicesSection />
-        <ScheduleSection />
-        <TestimonialsSection />
         <FaqSection />
         <ContactSection />
+        <FeedbackSection />
       </main>
       <Footer
         brandName={config.brandName}
@@ -74,7 +72,7 @@ export function SiteSections() {
               {[
                 [mainAstrologer.experience.split(" ")[0], "Years of guidance"],
                 [`${config.services.length}`, "Offerings"],
-                [`${config.schedule.length}`, "Schedule blocks"]
+                ["100%", "Guided manually"]
               ].map(([value, label]) => (
                 <div key={label} className="rounded-[1.75rem] border border-sage/10 bg-white/70 p-4 shadow-glow">
                   <p className="font-display text-2xl text-sage">{value}</p>
@@ -98,7 +96,7 @@ export function SiteSections() {
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Light, calm design" text="A simple spiritual presentation that feels clear, personal, and trustworthy." />
-              <FeatureCard icon={<Clock3 className="h-5 w-5" />} title="Guided process" text="Clients move step by step from service selection to payment confirmation." />
+              <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Guided process" text="Clients move step by step from service selection to payment confirmation." />
               <FeatureCard icon={<Phone className="h-5 w-5" />} title="Direct follow-up" text="Once payment is marked done, the astrologer receives a ready message." />
               <FeatureCard icon={<Flower2 className="h-5 w-5" />} title="Personal details intake" text="DOB, TOB, and POB are collected before the consultation process begins." />
             </div>
@@ -177,66 +175,6 @@ export function SiteSections() {
     );
   }
 
-  function ScheduleSection() {
-    return (
-      <section id="schedule" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <SectionHeading
-              eyebrow="Schedule"
-              title="Weekly class timings in a simple format"
-              description="Students can choose their class, complete payment, and then wait for the astrologer or team to share the final joining details."
-            />
-            <div className="mt-8 rounded-[2rem] border border-gold/25 bg-gold/10 p-6">
-              <p className="font-display text-2xl text-sage">Consultation note</p>
-              <p className="mt-3 text-sm leading-7 text-sage/80">
-                For one-to-one readings, the exact meeting slot can be shared after payment confirmation and intake review.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-4">
-            {config.schedule.map((item) => (
-              <div key={item.id} className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow">
-                <p className="text-sm uppercase tracking-[0.25em] text-gold">{item.classDate}</p>
-                <h3 className="mt-3 font-display text-2xl text-sage">{item.className}</h3>
-                <p className="mt-3 text-sage/80">{item.classTime}</p>
-                <div className="mt-3 grid gap-2 text-sm text-sage/70">
-                  <p>
-                    {item.teacher} • {item.type}
-                  </p>
-                  {item.mode ? <p>Mode: {item.mode}</p> : null}
-                  {item.platform ? <p>Platform: {item.platform}</p> : null}
-                  {item.courseDuration ? <p>Course Duration: {item.courseDuration}</p> : null}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  function TestimonialsSection() {
-    return (
-      <section id="testimonials" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <SectionHeading
-          eyebrow="Testimonials"
-          title="A soft and trustworthy space for client confidence"
-          description="The styling stays spiritual and calm, while still making the next step obvious."
-        />
-        <div className="mt-10 grid gap-6 lg:grid-cols-3">
-          {config.testimonials.map((testimonial) => (
-            <div key={testimonial.id} className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow">
-              <MessageSquareQuote className="h-8 w-8 text-gold" />
-              <p className="mt-4 text-sm leading-7 text-sage/80">&quot;{testimonial.quote}&quot;</p>
-              <p className="mt-6 font-semibold text-sage">{testimonial.name}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
   function FaqSection() {
     return (
       <section id="faq" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -280,6 +218,23 @@ export function SiteSections() {
         </div>
         {loading ? <p className="mt-6 text-sm text-sage/60">Loading live content from Supabase...</p> : null}
         {error ? <p className="mt-3 text-sm text-ember">Supabase load issue: {error}</p> : null}
+      </section>
+    );
+  }
+
+  function FeedbackSection() {
+    return (
+      <section id="feedback" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <SectionHeading
+              eyebrow="Feedback"
+              title="Let clients share feedback after their consultation"
+              description="Instead of showing fixed automated feedback on the homepage, this section lets real users submit their own response after the service is complete."
+            />
+          </div>
+          <FeedbackForm />
+        </div>
       </section>
     );
   }

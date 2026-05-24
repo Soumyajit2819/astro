@@ -55,19 +55,6 @@ export function AdminShell() {
     });
   };
 
-  const updateSchedule = (index: number, nextItem: SiteConfig["schedule"][number]) => {
-    const next = [...workingConfig.schedule];
-    next[index] = nextItem;
-    setDraft({ ...workingConfig, schedule: next });
-  };
-
-  const removeSchedule = (index: number) => {
-    setDraft({
-      ...workingConfig,
-      schedule: workingConfig.schedule.filter((_, itemIndex) => itemIndex !== index)
-    });
-  };
-
   const updateFaq = (index: number, nextItem: SiteConfig["faqs"][number]) => {
     const next = [...workingConfig.faqs];
     next[index] = nextItem;
@@ -125,6 +112,27 @@ export function AdminShell() {
       setStatus("Image uploaded to Supabase Storage. Click Save to Supabase to store the image URL in the astrologers table.");
     } catch (uploadError) {
       setStatus(uploadError instanceof Error ? uploadError.message : "Image upload failed.");
+    }
+  };
+
+  const handleServiceQrUpload = async (index: number, file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    setStatus(null);
+    try {
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "astrologer-images";
+      const extension = file.name.split(".").pop() || "png";
+      const path = `service-qr/${Date.now()}-${index}.${extension}`;
+      const publicUrl = await uploadPublicFile(bucket, path, file);
+      updateService(index, {
+        ...workingConfig.services[index],
+        paymentQrUrl: publicUrl
+      });
+      setStatus("Payment QR uploaded to Supabase Storage. Click Save to Supabase to store it for this service.");
+    } catch (uploadError) {
+      setStatus(uploadError instanceof Error ? uploadError.message : "QR upload failed.");
     }
   };
 
@@ -298,7 +306,8 @@ export function AdminShell() {
                       name: "New Service",
                       price: 1000,
                       description: "",
-                      type: "consultation"
+                      type: "consultation",
+                      paymentQrUrl: ""
                     }
                   ]
                 })
@@ -316,6 +325,20 @@ export function AdminShell() {
                     value={String(item.price)}
                     onChange={(value) => updateService(index, { ...item, price: Number(value) || 0 })}
                   />
+                  <EditorInput
+                    label="Payment QR URL"
+                    value={item.paymentQrUrl}
+                    onChange={(value) => updateService(index, { ...item, paymentQrUrl: value })}
+                  />
+                  <label className="text-sm text-slate-300">
+                    Upload payment QR
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => void handleServiceQrUpload(index, event.target.files?.[0] ?? null)}
+                      className="mt-2 block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-stardust file:px-4 file:py-2 file:text-sm file:font-semibold file:text-midnight"
+                    />
+                  </label>
                   <label className="text-sm text-slate-300">
                     Type
                     <select
@@ -332,64 +355,6 @@ export function AdminShell() {
                     </select>
                   </label>
                   <DeleteButton onClick={() => removeService(index)} />
-                </div>
-              )}
-            />
-
-            <CollectionEditor
-              title="Class Schedule"
-              description="These rows are saved to the schedule table."
-              items={workingConfig.schedule}
-              onAdd={() =>
-                setDraft({
-                  ...workingConfig,
-                  schedule: [
-                    ...workingConfig.schedule,
-                    {
-                      id: `schedule-${Date.now()}`,
-                      className: "New Batch",
-                      teacher: "",
-                      classDate: "",
-                      classTime: "",
-                      courseDuration: "",
-                      type: "Theory",
-                      mode: "",
-                      platform: ""
-                    }
-                  ]
-                })
-              }
-              renderItem={(item, index) => (
-                <div className="grid gap-3 rounded-3xl border border-white/10 bg-midnight/30 p-4">
-                  <EditorInput
-                    label="Class name"
-                    value={item.className}
-                    onChange={(value) => updateSchedule(index, { ...item, className: value })}
-                  />
-                  <EditorInput label="Teacher" value={item.teacher} onChange={(value) => updateSchedule(index, { ...item, teacher: value })} />
-                  <EditorInput
-                    label="Class date / day"
-                    value={item.classDate}
-                    onChange={(value) => updateSchedule(index, { ...item, classDate: value })}
-                  />
-                  <EditorInput
-                    label="Class time"
-                    value={item.classTime}
-                    onChange={(value) => updateSchedule(index, { ...item, classTime: value })}
-                  />
-                  <EditorInput
-                    label="Course duration"
-                    value={item.courseDuration}
-                    onChange={(value) => updateSchedule(index, { ...item, courseDuration: value })}
-                  />
-                  <EditorInput label="Type" value={item.type} onChange={(value) => updateSchedule(index, { ...item, type: value })} />
-                  <EditorInput label="Mode" value={item.mode} onChange={(value) => updateSchedule(index, { ...item, mode: value })} />
-                  <EditorInput
-                    label="Platform"
-                    value={item.platform}
-                    onChange={(value) => updateSchedule(index, { ...item, platform: value })}
-                  />
-                  <DeleteButton onClick={() => removeSchedule(index)} />
                 </div>
               )}
             />
@@ -426,6 +391,9 @@ export function AdminShell() {
           </p>
           <p className="mt-2">
             To also save <code>title</code>, <code>upi_id</code>, <code>instagram</code>, <code>youtube</code>, <code>facebook</code>, and <code>address</code>, add those columns in Supabase.
+          </p>
+          <p className="mt-2">
+            To save service-wise QR images for different prices, add <code>payment_qr_url</code> to the <code>services</code> table.
           </p>
         </div>
       </div>

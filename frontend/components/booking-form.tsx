@@ -4,7 +4,7 @@ import type { SiteConfig } from "@/lib/site-config";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 
 const bookingSchema = z.object({
@@ -62,7 +62,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     return buildUpiLink(mainAstrologer.upiId, mainAstrologer.name, selectedService?.price ?? 0, selectedService?.name ?? "Consultation");
   }, [mainAstrologer.name, mainAstrologer.upiId, selectedService?.name, selectedService?.price]);
 
-  const qrSource = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
+  const qrSource = selectedService?.paymentQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
 
   const onSubmit = form.handleSubmit((values) => {
     const service = config.services.find((item) => item.id === values.selectedServiceId);
@@ -102,7 +102,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   };
 
   const inputClass =
-    "w-full rounded-2xl border border-sage/12 bg-white/80 px-4 py-3 text-sm text-sage outline-none transition placeholder:text-sage/40 focus:border-gold";
+    "mt-2 w-full rounded-2xl border border-sage/12 bg-white px-4 py-3 text-sm text-sage outline-none transition placeholder:text-sage/40 focus:border-gold";
 
   return (
     <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow backdrop-blur sm:p-8">
@@ -156,63 +156,70 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         </div>
       </div>
 
-      <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
+      <form className="grid gap-5" onSubmit={onSubmit}>
         <div className="sm:col-span-2">
-          <select
-            className={inputClass}
-            {...form.register("selectedServiceId", {
-              onChange: () => {
-                form.setValue("paymentCompleted", false, { shouldValidate: true });
-                setConfirmation(null);
-              }
-            })}
-          >
-            {config.services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name} - Rs. {service.price}
-              </option>
-            ))}
-          </select>
+          <label className="text-sm font-medium text-sage">
+            Select Service <span className="text-ember">*</span>
+            <select
+              className={inputClass}
+              {...form.register("selectedServiceId", {
+                onChange: () => {
+                  form.setValue("paymentCompleted", false, { shouldValidate: true });
+                  setConfirmation(null);
+                }
+              })}
+            >
+              {config.services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} - Rs. {service.price}
+                </option>
+              ))}
+            </select>
+          </label>
           <FieldError message={form.formState.errors.selectedServiceId?.message} />
         </div>
 
-        <div className="sm:col-span-2">
-          <input className={inputClass} placeholder="Full name" {...form.register("fullName")} />
-          <FieldError message={form.formState.errors.fullName?.message} />
-        </div>
+        <RequiredInput label="Full Name" placeholder="Enter your full name" register={form.register("fullName")} className={inputClass} />
+        <FieldError message={form.formState.errors.fullName?.message} />
 
-        <div>
-          <input className={inputClass} placeholder="Email address" {...form.register("email")} />
-          <FieldError message={form.formState.errors.email?.message} />
-        </div>
-        <div>
-          <input className={inputClass} placeholder="Phone number" {...form.register("phoneNumber")} />
-          <FieldError message={form.formState.errors.phoneNumber?.message} />
-        </div>
+        <RequiredInput label="Email" placeholder="Enter your email address" register={form.register("email")} className={inputClass} />
+        <FieldError message={form.formState.errors.email?.message} />
 
-        <div>
-          <input type="date" className={inputClass} {...form.register("dob")} />
-          <FieldError message={form.formState.errors.dob?.message} />
-        </div>
-        <div>
-          <input type="time" className={inputClass} {...form.register("tob")} />
-          <FieldError message={form.formState.errors.tob?.message} />
-        </div>
+        <RequiredInput
+          label="Phone Number"
+          placeholder="Enter your phone number"
+          register={form.register("phoneNumber")}
+          className={inputClass}
+        />
+        <FieldError message={form.formState.errors.phoneNumber?.message} />
 
-        <div className="sm:col-span-2">
-          <input className={inputClass} placeholder="Place of birth" {...form.register("pob")} />
-          <FieldError message={form.formState.errors.pob?.message} />
-        </div>
+        <RequiredInput label="Date of Birth" type="date" register={form.register("dob")} className={inputClass} />
+        <FieldError message={form.formState.errors.dob?.message} />
 
-        <div className="sm:col-span-2">
+        <RequiredInput label="Time of Birth" type="time" register={form.register("tob")} className={inputClass} />
+        <FieldError message={form.formState.errors.tob?.message} />
+
+        <RequiredInput
+          label="Place of Birth"
+          placeholder="Enter your place of birth"
+          register={form.register("pob")}
+          className={inputClass}
+        />
+        <FieldError message={form.formState.errors.pob?.message} />
+
+        <label className="text-sm font-medium text-sage">
+          Additional Message
           <textarea
             className={`${inputClass} min-h-28 resize-none`}
-            placeholder="Additional message (optional)"
+            placeholder="Anything you want to share before the consultation"
             {...form.register("message")}
           />
-        </div>
+        </label>
 
-        <div className="sm:col-span-2 rounded-[1.5rem] border border-sage/10 bg-ivory/65 p-4">
+        <div className="rounded-[1.5rem] border border-sage/10 bg-ivory/65 p-4">
+          <p className="mb-3 text-sm font-medium text-sage">
+            Payment Confirmation <span className="text-ember">*</span>
+          </p>
           <label className="flex cursor-pointer items-start gap-3 text-sm text-sage/80">
             <input
               type="checkbox"
@@ -227,10 +234,11 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <FieldError message={form.formState.errors.paymentCompleted?.message} />
         </div>
 
-        <div className="sm:col-span-2">
+        <div>
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-3 font-semibold text-ivory transition hover:bg-sage/90"
+            disabled={!form.watch("paymentCompleted")}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-3 font-semibold text-ivory transition hover:bg-sage/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <MessageCircle className="h-4 w-4" />
             Proceed to Astrologer Confirmation
@@ -262,4 +270,25 @@ function FieldError({ message }: { message?: string }) {
   }
 
   return <p className="mt-2 text-xs text-ember">{message}</p>;
+}
+
+function RequiredInput({
+  label,
+  placeholder,
+  type = "text",
+  register,
+  className
+}: {
+  label: string;
+  placeholder?: string;
+  type?: string;
+  register: UseFormRegisterReturn;
+  className: string;
+}) {
+  return (
+    <label className="text-sm font-medium text-sage">
+      {label} <span className="text-ember">*</span>
+      <input type={type} className={className} placeholder={placeholder} {...register} />
+    </label>
+  );
 }

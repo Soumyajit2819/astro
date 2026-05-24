@@ -7,8 +7,7 @@ import { useState } from "react";
 const links = [
   ["About", "#about"],
   ["Services", "#services"],
-  ["Schedule", "#schedule"],
-  ["Testimonials", "#testimonials"],
+  ["Feedback", "#feedback"],
   ["FAQ", "#faq"],
   ["Contact", "#contact"]
 ] as const;

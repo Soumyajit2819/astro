@@ -20,6 +20,7 @@ export type ServiceItem = {
   price: number;
   description: string;
   type: "consultation" | "class";
+  paymentQrUrl: string;
 };
 
 export type ScheduleItem = {
@@ -87,21 +88,24 @@ export const defaultSiteConfig: SiteConfig = {
       name: "Career Consultation",
       price: 501,
       description: "Career direction, job timing, and personal remedies.",
-      type: "consultation"
+      type: "consultation",
+      paymentQrUrl: ""
     },
     {
       id: "service-2",
       name: "Marriage Consultation",
       price: 701,
       description: "Marriage timing, compatibility, and relationship guidance.",
-      type: "consultation"
+      type: "consultation",
+      paymentQrUrl: ""
     },
     {
       id: "service-3",
       name: "Astrology Foundation Class",
       price: 2500,
       description: "Beginner-friendly weekly class covering horoscope basics.",
-      type: "class"
+      type: "class",
+      paymentQrUrl: ""
     }
   ],
   schedule: [

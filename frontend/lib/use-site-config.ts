@@ -30,6 +30,7 @@ type ServiceRow = {
   description?: string;
   price?: number | string;
   type?: string;
+  payment_qr_url?: string;
 };
 
 type ScheduleRow = {
@@ -90,7 +91,8 @@ function mapServices(rows: ServiceRow[]): ServiceItem[] {
     name: row.title || `Service ${index + 1}`,
     description: row.description || "",
     price: Number(row.price || 0),
-    type: row.type === "class" ? "class" : "consultation"
+    type: row.type === "class" ? "class" : "consultation",
+    paymentQrUrl: row.payment_qr_url || ""
   }));
 }
 
@@ -180,7 +182,8 @@ function serviceRowsExtended(services: ServiceItem[]) {
     title: item.name,
     description: item.description,
     price: item.price,
-    type: item.type
+    type: item.type,
+    payment_qr_url: item.paymentQrUrl
   }));
 }
 

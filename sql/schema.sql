@@ -20,6 +20,7 @@ CREATE TABLE services (
   name VARCHAR(255) UNIQUE NOT NULL,
   description TEXT,
   price_inr NUMERIC(10, 2) NOT NULL,
+  payment_qr_url TEXT,
   active BOOLEAN DEFAULT TRUE
 );
 
@@ -88,4 +89,13 @@ CREATE TABLE faq (
   question VARCHAR(500) NOT NULL,
   answer TEXT NOT NULL,
   category VARCHAR(100)
+);
+
+CREATE TABLE feedback (
+  id BIGSERIAL PRIMARY KEY,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  consultation_type VARCHAR(255) NOT NULL,
+  feedback_text TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
