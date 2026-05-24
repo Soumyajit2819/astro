@@ -120,7 +120,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     return buildUpiLink(mainAstrologer.upiId, mainAstrologer.name, selectedService?.price ?? 0, selectedService?.name ?? "Consultation");
   }, [mainAstrologer.name, mainAstrologer.upiId, selectedService?.name, selectedService?.price]);
   const paymentActionUrl = selectedService?.paymentUrl?.trim() || upiLink;
-  const paymentActionLabel = selectedService?.paymentUrl?.trim() ? "Pay Now" : "Pay in UPI App";
+  const paymentActionLabel = selectedService?.paymentUrl?.trim() ? "Open Payment App (Optional)" : "Open UPI App (Optional)";
 
   const qrSource = selectedService?.paymentQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
 
@@ -303,8 +303,9 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <div className="mt-4 grid gap-3 text-sm text-sage/80">
             <p>1. Select the service or consultation amount.</p>
             <p>2. Fill your contact details{requiresBirthDetails ? " and birth details" : ""}.</p>
-            <p>3. Scan the QR for the exact amount shown here.</p>
-            <p>4. Upload your payment screenshot, mark payment completed, then proceed.</p>
+            <p>3. Pay using the QR code or copy the UPI ID manually.</p>
+            <p>4. Use the app-open button only if your phone supports the payment request cleanly.</p>
+            <p>5. Upload your payment screenshot, mark payment completed, then proceed.</p>
           </div>
         </div>
 
@@ -316,14 +317,31 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <div className="mt-4 rounded-[1.5rem] bg-white p-4">
             <img src={qrSource} alt={`Payment QR for Rs. ${selectedService?.price ?? 0}`} className="mx-auto h-56 w-56 rounded-2xl object-contain" />
           </div>
+          <div className="mt-4 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4 text-sm text-sage">
+            <p className="font-semibold">Preferred payment method</p>
+            <p className="mt-2 text-sage/75">Scan the QR code above or copy the UPI ID below and pay the exact amount manually in BHIM, PhonePe, GPay, or Paytm.</p>
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-sage/10 bg-ivory/70 px-4 py-3">
+              <span className="break-all font-medium">{mainAstrologer.upiId}</span>
+              <button
+                type="button"
+                onClick={copyUpiId}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sage/15 px-3 py-1 text-xs"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
           <a
             href={paymentActionUrl}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-sage px-4 py-3 text-sm font-semibold text-ivory"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-sage/15 bg-white px-4 py-3 text-sm font-semibold text-sage"
           >
             {paymentActionLabel}
           </a>
           <p className="mt-2 text-xs text-sage/65">
-            Tap the button for quick payment. If a direct payment URL is added for this service, it will open that option first.
+            This button is only a convenience option. If BHIM or another app says the request is unsupported, use the QR code or copied UPI ID instead.
           </p>
           <p className="mt-4 text-sm text-sage/75">
             Selected service: <span className="font-semibold text-sage">{selectedService?.name}</span>

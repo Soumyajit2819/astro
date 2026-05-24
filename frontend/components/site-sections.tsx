@@ -165,12 +165,10 @@ export function SiteSections() {
               <h3 className="mt-4 font-display text-2xl text-sage">{service.name}</h3>
               <p className="mt-4 text-sm leading-7 text-sage/80">{service.description}</p>
               <p className="mt-6 text-xl font-semibold text-sage">Rs. {service.price}</p>
-              <a href={service.paymentUrl || "#booking"} className="mt-6 inline-block rounded-full bg-gold/15 px-5 py-3 text-sm font-semibold text-sage">
-                {service.paymentUrl ? "Pay Now" : "Choose this"}
+              <a href="#booking" className="mt-6 inline-block rounded-full bg-gold/15 px-5 py-3 text-sm font-semibold text-sage">
+                Choose this
               </a>
-              {!service.paymentUrl ? null : (
-                <p className="mt-3 text-xs text-sage/65">Direct payment link added for faster checkout.</p>
-              )}
+              <p className="mt-3 text-xs text-sage/65">Payment opens inside the booking section with QR, UPI ID, and screenshot confirmation.</p>
             </div>
           ))}
         </div>
