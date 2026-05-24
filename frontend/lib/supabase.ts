@@ -56,6 +56,16 @@ export async function insertRows<T>(table: string, rows: T[]) {
   return handleResponse<T[]>(response);
 }
 
+export async function updateRow<T>(table: string, filterColumn: string, filterValue: string | number, updates: Partial<T>) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${filterColumn}=eq.${encodeURIComponent(String(filterValue))}`, {
+    method: "PATCH",
+    headers: getHeaders(),
+    body: JSON.stringify(updates)
+  });
+
+  return handleResponse<T[]>(response);
+}
+
 export async function uploadPublicFile(bucket: string, path: string, file: File) {
   const normalizedBucket = bucket.trim();
   const normalizedPath = path.trim();

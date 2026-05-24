@@ -24,3 +24,10 @@ on public.payment_proofs
 for select
 to public
 using (true);
+
+create policy "public update payment proofs"
+on public.payment_proofs
+for update
+to public
+using (true)
+with check (true);

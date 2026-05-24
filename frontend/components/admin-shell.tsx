@@ -2,9 +2,9 @@
 
 import type { ReactNode } from "react";
 import type { AstrologerItem, SiteConfig } from "@/lib/site-config";
-import { selectRows, uploadPublicFile } from "@/lib/supabase";
+import { selectRows, updateRow, uploadPublicFile } from "@/lib/supabase";
 import { useSiteConfig } from "@/lib/use-site-config";
-import { AlertCircle, ExternalLink, LogOut, Plus, RefreshCcw, RotateCcw, Save, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, LogOut, Plus, RefreshCcw, RotateCcw, Save, Upload, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -28,6 +28,7 @@ export function AdminShell() {
   const [paymentProofs, setPaymentProofs] = useState<PaymentProofRow[]>([]);
   const [paymentProofError, setPaymentProofError] = useState<string | null>(null);
   const [paymentProofLoading, setPaymentProofLoading] = useState(false);
+  const [proofActionId, setProofActionId] = useState<number | null>(null);
 
   const workingConfig = draft ?? config;
 
@@ -54,6 +55,25 @@ export function AdminShell() {
   useEffect(() => {
     void loadPaymentProofs();
   }, []);
+
+  const handlePaymentProofDecision = async (proofId: number | undefined, nextStatus: "accepted" | "rejected") => {
+    if (!proofId) {
+      return;
+    }
+
+    setProofActionId(proofId);
+    setPaymentProofError(null);
+
+    try {
+      await updateRow<PaymentProofRow>("payment_proofs", "id", proofId, { status: nextStatus });
+      setPaymentProofs((current) => current.filter((proof) => proof.id !== proofId));
+      setStatus(`Payment proof ${nextStatus}. It has been removed from the pending list.`);
+    } catch (actionError) {
+      setPaymentProofError(actionError instanceof Error ? actionError.message : "Unable to update payment proof status.");
+    } finally {
+      setProofActionId(null);
+    }
+  };
 
   if (!ready) {
     return <div className="min-h-screen bg-ivory" />;
@@ -254,13 +274,15 @@ export function AdminShell() {
 
               {paymentProofLoading ? <p className="mt-4 text-sm text-sage/65">Loading uploaded payment proofs...</p> : null}
               {paymentProofError ? <p className="mt-4 text-sm text-ember">{paymentProofError}</p> : null}
-              {!paymentProofLoading && !paymentProofError && paymentProofs.length === 0 ? (
+              {!paymentProofLoading && !paymentProofError && paymentProofs.filter((proof) => (proof.status || "pending") === "pending").length === 0 ? (
                 <p className="mt-4 text-sm text-sage/65">No payment proofs have been uploaded yet.</p>
               ) : null}
 
               {!paymentProofLoading && !paymentProofError && paymentProofs.length > 0 ? (
                 <div className="mt-6 grid gap-4">
-                  {paymentProofs.map((proof, index) => (
+                  {paymentProofs
+                    .filter((proof) => (proof.status || "pending") === "pending")
+                    .map((proof, index) => (
                     <div key={proof.id ?? index} className="rounded-3xl border border-sage/10 bg-ivory/60 p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -289,6 +311,26 @@ export function AdminShell() {
                           Open Screenshot
                         </a>
                       ) : null}
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                        <button
+                          type="button"
+                          disabled={proofActionId === proof.id}
+                          onClick={() => void handlePaymentProofDecision(proof.id, "accepted")}
+                          className="inline-flex items-center justify-center gap-2 rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory disabled:opacity-60"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          disabled={proofActionId === proof.id}
+                          onClick={() => void handlePaymentProofDecision(proof.id, "rejected")}
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-ember/25 bg-white/70 px-4 py-2 text-xs font-semibold text-ember disabled:opacity-60"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Reject
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -409,7 +451,8 @@ export function AdminShell() {
                       price: 1000,
                       description: "",
                       type: "consultation",
-                      paymentQrUrl: ""
+                      paymentQrUrl: "",
+                      paymentUrl: ""
                     }
                   ]
                 })
@@ -431,6 +474,11 @@ export function AdminShell() {
                     label="Payment QR URL"
                     value={item.paymentQrUrl}
                     onChange={(value) => updateService(index, { ...item, paymentQrUrl: value })}
+                  />
+                  <EditorInput
+                    label="Payment URL"
+                    value={item.paymentUrl}
+                    onChange={(value) => updateService(index, { ...item, paymentUrl: value })}
                   />
                   <label className="text-sm text-slate-300">
                     Upload payment QR
@@ -496,6 +544,9 @@ export function AdminShell() {
           </p>
           <p className="mt-2">
             To save service-wise QR images for different prices, add <code>payment_qr_url</code> to the <code>services</code> table.
+          </p>
+          <p className="mt-2">
+            To save direct per-service payment links, add <code>payment_url</code> to the <code>services</code> table.
           </p>
           <p className="mt-2">
             To review uploaded payment screenshots in admin, create a <code>payment_proofs</code> table using the new SQL setup file.

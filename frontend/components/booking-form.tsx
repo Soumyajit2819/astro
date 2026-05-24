@@ -4,10 +4,12 @@ import type { SiteConfig } from "@/lib/site-config";
 import { insertRows, uploadPublicFile } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck, Upload } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import type { ServiceItem } from "@/lib/site-config";
+
+const BOOKING_DRAFT_STORAGE_KEY = "astro-booking-draft";
 
 const createBookingSchema = (services: ServiceItem[]) =>
   z
@@ -73,6 +75,7 @@ const createBookingSchema = (services: ServiceItem[]) =>
     });
 
 type BookingFormValues = z.infer<ReturnType<typeof createBookingSchema>>;
+type BookingDraft = Omit<BookingFormValues, "paymentScreenshot">;
 
 function buildUpiLink(upiId: string, name: string, amount: number, serviceName: string) {
   const params = new URLSearchParams({
@@ -116,8 +119,63 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const upiLink = useMemo(() => {
     return buildUpiLink(mainAstrologer.upiId, mainAstrologer.name, selectedService?.price ?? 0, selectedService?.name ?? "Consultation");
   }, [mainAstrologer.name, mainAstrologer.upiId, selectedService?.name, selectedService?.price]);
+  const paymentActionUrl = selectedService?.paymentUrl?.trim() || upiLink;
+  const paymentActionLabel = selectedService?.paymentUrl?.trim() ? "Pay Now" : "Pay in UPI App";
 
   const qrSource = selectedService?.paymentQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const savedDraft = window.localStorage.getItem(BOOKING_DRAFT_STORAGE_KEY);
+    if (!savedDraft) {
+      return;
+    }
+
+    try {
+      const parsedDraft = JSON.parse(savedDraft) as Partial<BookingDraft>;
+      form.reset({
+        fullName: parsedDraft.fullName ?? "",
+        phoneNumber: parsedDraft.phoneNumber ?? "",
+        email: parsedDraft.email ?? "",
+        dob: parsedDraft.dob ?? "",
+        tob: parsedDraft.tob ?? "",
+        pob: parsedDraft.pob ?? "",
+        selectedServiceId: parsedDraft.selectedServiceId ?? config.services[0]?.id ?? "",
+        paymentCompleted: false,
+        message: parsedDraft.message ?? ""
+      });
+      setConfirmation("Your booking details were restored after returning to the page. Please re-upload the screenshot after payment.");
+    } catch {
+      window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
+    }
+  }, [config.services, form]);
+
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      const draft: BookingDraft = {
+        fullName: values.fullName ?? "",
+        phoneNumber: values.phoneNumber ?? "",
+        email: values.email ?? "",
+        dob: values.dob ?? "",
+        tob: values.tob ?? "",
+        pob: values.pob ?? "",
+        selectedServiceId: values.selectedServiceId ?? config.services[0]?.id ?? "",
+        paymentCompleted: false,
+        message: values.message ?? ""
+      };
+
+      window.localStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    });
+
+    return () => subscription.unsubscribe();
+  }, [config.services, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     const service = config.services.find((item) => item.id === values.selectedServiceId);
@@ -174,6 +232,18 @@ export function BookingForm({ config }: { config: SiteConfig }) {
 
       const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${whatsappText}`;
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
+      form.reset({
+        fullName: "",
+        phoneNumber: "",
+        email: "",
+        dob: "",
+        tob: "",
+        pob: "",
+        selectedServiceId: config.services[0]?.id ?? "",
+        paymentCompleted: false,
+        message: ""
+      });
 
       setConfirmation(
         `Payment proof uploaded for Rs. ${service.price}. If WhatsApp does not show the link properly, use the buttons below to open or copy the screenshot link manually.`
@@ -246,6 +316,15 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <div className="mt-4 rounded-[1.5rem] bg-white p-4">
             <img src={qrSource} alt={`Payment QR for Rs. ${selectedService?.price ?? 0}`} className="mx-auto h-56 w-56 rounded-2xl object-contain" />
           </div>
+          <a
+            href={paymentActionUrl}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-sage px-4 py-3 text-sm font-semibold text-ivory"
+          >
+            {paymentActionLabel}
+          </a>
+          <p className="mt-2 text-xs text-sage/65">
+            Tap the button for quick payment. If a direct payment URL is added for this service, it will open that option first.
+          </p>
           <p className="mt-4 text-sm text-sage/75">
             Selected service: <span className="font-semibold text-sage">{selectedService?.name}</span>
           </p>

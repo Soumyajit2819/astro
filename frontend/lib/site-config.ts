@@ -21,6 +21,7 @@ export type ServiceItem = {
   description: string;
   type: "consultation" | "class";
   paymentQrUrl: string;
+  paymentUrl: string;
 };
 
 export type ScheduleItem = {
@@ -89,7 +90,8 @@ export const defaultSiteConfig: SiteConfig = {
       price: 201,
       description: "Career direction, job timing, and personal remedies.",
       type: "consultation",
-      paymentQrUrl: ""
+      paymentQrUrl: "",
+      paymentUrl: ""
     },
     {
       id: "service-2",
@@ -97,7 +99,8 @@ export const defaultSiteConfig: SiteConfig = {
       price: 701,
       description: "Marriage timing, compatibility, and relationship guidance.",
       type: "consultation",
-      paymentQrUrl: ""
+      paymentQrUrl: "",
+      paymentUrl: ""
     },
     {
       id: "service-3",
@@ -105,7 +108,8 @@ export const defaultSiteConfig: SiteConfig = {
       price: 2500,
       description: "Beginner-friendly weekly class covering horoscope basics.",
       type: "class",
-      paymentQrUrl: ""
+      paymentQrUrl: "",
+      paymentUrl: ""
     }
   ],
   schedule: [
