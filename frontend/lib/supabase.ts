@@ -1,5 +1,5 @@
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
 function getHeaders() {
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -57,7 +57,10 @@ export async function insertRows<T>(table: string, rows: T[]) {
 }
 
 export async function uploadPublicFile(bucket: string, path: string, file: File) {
-  const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
+  const normalizedBucket = bucket.trim();
+  const normalizedPath = path.trim();
+
+  const response = await fetch(`${supabaseUrl}/storage/v1/object/${normalizedBucket}/${normalizedPath}`, {
     method: "POST",
     headers: {
       apikey: supabaseAnonKey || "",
@@ -72,5 +75,5 @@ export async function uploadPublicFile(bucket: string, path: string, file: File)
     throw new Error(text || "File upload failed.");
   }
 
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+  return `${supabaseUrl}/storage/v1/object/public/${normalizedBucket}/${normalizedPath}`;
 }

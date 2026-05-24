@@ -132,7 +132,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     }
 
     try {
-      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "astrologer-images";
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim() || "astrologer-images";
       const extension = screenshotFile.name.split(".").pop() || "jpg";
       const safePhone = values.phoneNumber.replace(/\D/g, "") || "client";
       const path = `payment-proofs/${Date.now()}-${safePhone}.${extension}`;

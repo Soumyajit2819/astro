@@ -101,7 +101,7 @@ export function AdminShell() {
 
     setStatus(null);
     try {
-      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "astrologer-images";
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim() || "astrologer-images";
       const extension = file.name.split(".").pop() || "jpg";
       const path = `astrologers/${Date.now()}-${index}.${extension}`;
       const publicUrl = await uploadPublicFile(bucket, path, file);
@@ -122,7 +122,7 @@ export function AdminShell() {
 
     setStatus(null);
     try {
-      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "astrologer-images";
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim() || "astrologer-images";
       const extension = file.name.split(".").pop() || "png";
       const path = `service-qr/${Date.now()}-${index}.${extension}`;
       const publicUrl = await uploadPublicFile(bucket, path, file);
