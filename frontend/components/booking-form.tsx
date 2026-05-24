@@ -4,7 +4,7 @@ import type { SiteConfig } from "@/lib/site-config";
 import { insertRows, uploadPublicFile } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import type { ServiceItem } from "@/lib/site-config";
@@ -93,6 +93,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const skipDraftSyncRef = useRef(false);
   const mainAstrologer = config.astrologers[0];
   const bookingSchema = useMemo(() => createBookingSchema(config.services), [config.services]);
 
@@ -124,6 +125,15 @@ export function BookingForm({ config }: { config: SiteConfig }) {
 
   const qrSource = selectedService?.paymentQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
 
+  const clearBookingDraft = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    skipDraftSyncRef.current = true;
+    window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -136,6 +146,21 @@ export function BookingForm({ config }: { config: SiteConfig }) {
 
     try {
       const parsedDraft = JSON.parse(savedDraft) as Partial<BookingDraft>;
+      const hasDraftContent = Boolean(
+        parsedDraft.fullName ||
+          parsedDraft.phoneNumber ||
+          parsedDraft.email ||
+          parsedDraft.dob ||
+          parsedDraft.tob ||
+          parsedDraft.pob ||
+          parsedDraft.message
+      );
+
+      if (!hasDraftContent) {
+        clearBookingDraft();
+        return;
+      }
+
       form.reset({
         fullName: parsedDraft.fullName ?? "",
         phoneNumber: parsedDraft.phoneNumber ?? "",
@@ -159,6 +184,11 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         return;
       }
 
+      if (skipDraftSyncRef.current) {
+        skipDraftSyncRef.current = false;
+        return;
+      }
+
       const draft: BookingDraft = {
         fullName: values.fullName ?? "",
         phoneNumber: values.phoneNumber ?? "",
@@ -170,6 +200,15 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         paymentCompleted: false,
         message: values.message ?? ""
       };
+
+      const hasDraftContent = Boolean(
+        draft.fullName || draft.phoneNumber || draft.email || draft.dob || draft.tob || draft.pob || draft.message
+      );
+
+      if (!hasDraftContent) {
+        window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
+        return;
+      }
 
       window.localStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify(draft));
     });
@@ -232,7 +271,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
 
       const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${whatsappText}`;
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
+      clearBookingDraft();
       form.reset({
         fullName: "",
         phoneNumber: "",

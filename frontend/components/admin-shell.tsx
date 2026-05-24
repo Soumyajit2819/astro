@@ -65,7 +65,11 @@ export function AdminShell() {
     setPaymentProofError(null);
 
     try {
-      await updateRow<PaymentProofRow>("payment_proofs", "id", proofId, { status: nextStatus });
+      const updatedRows = await updateRow<PaymentProofRow>("payment_proofs", "id", proofId, { status: nextStatus });
+      if (updatedRows.length === 0) {
+        throw new Error("Supabase did not update this row. Apply the payment_proofs UPDATE policy in SQL, then try again.");
+      }
+
       setPaymentProofs((current) => current.filter((proof) => proof.id !== proofId));
       setStatus(`Payment proof ${nextStatus}. It has been removed from the pending list.`);
     } catch (actionError) {
