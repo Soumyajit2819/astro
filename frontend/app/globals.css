@@ -78,9 +78,6 @@ section::before {
   position: relative;
   transform-style: preserve-3d;
   animation: planetSpin 18s linear infinite;
-  background:
-    radial-gradient(circle at 28% 30%, rgba(255, 245, 221, 0.95), transparent 18%),
-    linear-gradient(180deg, #e8c588 0%, #d39e57 18%, #f3d7aa 34%, #bc7c3d 52%, #efcf96 67%, #99673a 84%, #ecc488 100%);
   box-shadow:
     inset -18px -16px 30px rgba(96, 53, 17, 0.24),
     inset 16px 10px 24px rgba(255, 246, 220, 0.36),
@@ -90,10 +87,11 @@ section::before {
 .planet-jupiter::before {
   content: "";
   position: absolute;
-  inset: 14%;
+  inset: 8%;
   border-radius: 9999px;
-  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.15) 40%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.18) 40%, transparent 100%);
   transform: translateZ(28px);
+  z-index: 1;
 }
 
 .planet-jupiter::after {
@@ -121,8 +119,10 @@ section::before {
     linear-gradient(160deg, rgba(79, 95, 76, 0.12), rgba(255, 255, 255, 0.52));
 }
 
-.dev-blessing svg {
-  filter: drop-shadow(0 18px 24px rgba(82, 98, 79, 0.14));
+.jupiter-image {
+  transform: scale(1.28);
+  transform-origin: center;
+  filter: saturate(1.04) contrast(1.03);
 }
 
 @keyframes planetSpin {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { useSiteConfig } from "@/lib/use-site-config";
 import {
@@ -88,15 +89,22 @@ export function SiteSections() {
                   <Sparkles className="h-4 w-4" />
                   Ketu Dev Blessings
                 </div>
-                <div className="mt-4 flex items-center gap-4">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-[1.6rem] bg-white/70 p-2">
-                    <KetuDevArt />
+                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="relative h-48 overflow-hidden rounded-[1.6rem] border border-gold/20 bg-white/75 sm:h-52 sm:w-40">
+                    <Image
+                      src="/theme/ketu-dev-theme.jpeg"
+                      alt="Ketu Dev blessing"
+                      fill
+                      sizes="(max-width: 640px) 100vw, 160px"
+                      className="object-contain p-2"
+                    />
+                    <div className="pointer-events-none absolute inset-x-3 bottom-3 h-10 rounded-full bg-gold/15 blur-xl" />
                   </div>
                   <div>
                     <p className="font-display text-2xl text-sage">Protection, insight, and spiritual depth</p>
                     <p className="mt-2 text-sm leading-6 text-sage/80">
-                      A devotional visual accent is now part of the theme so the page feels more aligned with astrology
-                      and blessings, while your actual service data stays unchanged.
+                      The Ketu Dev blessing image is now placed inside the user theme in a clean devotional card, sized
+                      to stay clear of surrounding text and content.
                     </p>
                   </div>
                 </div>
@@ -107,12 +115,21 @@ export function SiteSections() {
                   <CircleDot className="h-4 w-4" />
                   Jupiter Motion
                 </div>
-                <div className="cosmic-orbit mt-4 flex h-44 items-center justify-center rounded-[1.6rem] bg-[radial-gradient(circle_at_50%_40%,rgba(255,249,236,0.95),rgba(240,228,197,0.9))]">
-                  <div className="planet-glow h-28 w-28" />
-                  <div className="planet-jupiter h-28 w-28 rounded-full" />
+                <div className="cosmic-orbit mt-4 flex h-52 items-center justify-center overflow-hidden rounded-[1.6rem] bg-[radial-gradient(circle_at_50%_40%,rgba(255,249,236,0.98),rgba(240,228,197,0.88))]">
+                  <div className="planet-glow h-36 w-36" />
+                  <div className="planet-jupiter h-36 w-36 overflow-hidden rounded-full">
+                    <Image
+                      src="/theme/jupiter-theme.jpeg"
+                      alt="Rotating Jupiter planet"
+                      fill
+                      sizes="144px"
+                      className="jupiter-image object-cover"
+                    />
+                  </div>
                 </div>
                 <p className="mt-4 text-sm leading-6 text-sage/80">
-                  A soft 3D-style rotating planet adds movement and gives the homepage a stronger astrological feel.
+                  The real Jupiter image is wrapped inside a rotating 3D-style frame so the homepage feels smoother,
+                  more spiritual, and visually richer without disturbing the layout.
                 </p>
               </div>
             </div>
@@ -316,30 +333,5 @@ function SocialLink({ href, icon }: { href: string; icon: ReactNode }) {
     >
       {icon}
     </a>
-  );
-}
-
-function KetuDevArt() {
-  return (
-    <svg viewBox="0 0 120 120" aria-hidden="true" className="h-full w-full">
-      <defs>
-        <linearGradient id="ketuBody" x1="0%" x2="100%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#6f8068" />
-          <stop offset="100%" stopColor="#3f4d3d" />
-        </linearGradient>
-        <linearGradient id="ketuAura" x1="0%" x2="0%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#f9e7b7" stopOpacity="1" />
-          <stop offset="100%" stopColor="#c89b3c" stopOpacity="0.5" />
-        </linearGradient>
-      </defs>
-      <circle cx="60" cy="22" r="16" fill="url(#ketuAura)" />
-      <path
-        d="M60 40c-16 0-30 14-30 30 0 8 3 16 8 21l22-10 22 10c5-5 8-13 8-21 0-16-14-30-30-30Z"
-        fill="url(#ketuBody)"
-      />
-      <path d="M60 56c-7 0-13 6-13 13s6 13 13 13 13-6 13-13-6-13-13-13Z" fill="#f7f1e3" />
-      <path d="M43 91c4 9 10 16 17 22 7-6 13-13 17-22l-17-8-17 8Z" fill="#c89b3c" />
-      <path d="M60 9l3 7 8 1-6 5 2 8-7-4-7 4 2-8-6-5 8-1 3-7Z" fill="#fff7e4" />
-    </svg>
   );
 }
