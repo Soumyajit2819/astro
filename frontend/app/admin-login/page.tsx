@@ -40,26 +40,39 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-glow backdrop-blur">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(160deg,#f9f1dc_0%,#ecd8af_46%,#d8c39a_100%)] px-4 py-12 text-sage">
+      <div className="pointer-events-none absolute inset-0 opacity-90">
+        <div className="absolute left-[-5rem] top-[-5rem] h-56 w-56 rounded-full bg-gold/20 blur-3xl" />
+        <div className="absolute bottom-[-6rem] right-[-4rem] h-72 w-72 rounded-full bg-sage/15 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_32%)]" />
+      </div>
+
+      <div className="relative w-full max-w-md rounded-[2rem] border border-gold/25 bg-[linear-gradient(180deg,rgba(255,250,240,0.96),rgba(244,232,204,0.94))] p-8 shadow-[0_28px_90px_rgba(82,98,79,0.16)] backdrop-blur">
+        <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-gold/70 to-transparent" />
+
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stardust/10 text-stardust">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-gold/30 bg-white/70 text-gold">
             <LockKeyhole className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="font-display text-3xl text-white">Admin Access</h1>
-            <p className="mt-1 text-sm text-slate-300">Enter the passcode to manage live website content.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">Secure Portal</p>
+            <h1 className="font-display text-3xl text-sage">Admin Access</h1>
+            <p className="mt-1 text-sm text-sage/80">Enter the passcode to manage live website content.</p>
           </div>
         </div>
 
+        <div className="mt-6 rounded-[1.5rem] border border-gold/20 bg-white/55 p-4 text-sm leading-6 text-sage/80">
+          A calmer cream-and-gold access screen keeps the login readable while matching the spiritual brand.
+        </div>
+
         <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-          <label className="block text-sm text-slate-300">
+          <label className="block text-sm font-medium text-sage">
             Admin passcode
             <input
               type="password"
               value={passcode}
               onChange={(event) => setPasscode(event.target.value)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
+              className="mt-2 w-full rounded-2xl border border-gold/20 bg-white/75 px-4 py-3 text-sm text-sage outline-none transition placeholder:text-sage/35 focus:border-gold focus:bg-white"
               placeholder="Enter passcode"
             />
           </label>
@@ -67,13 +80,13 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-stardust px-5 py-3 text-sm font-semibold text-midnight disabled:opacity-60"
+            className="w-full rounded-full bg-sage px-5 py-3 text-sm font-semibold text-ivory transition hover:bg-sage/90 disabled:opacity-60"
           >
             {loading ? "Checking..." : "Open Admin"}
           </button>
         </form>
 
-        {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+        {error ? <p className="mt-4 text-sm font-medium text-ember">{error}</p> : null}
       </div>
     </main>
   );

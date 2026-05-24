@@ -16,7 +16,7 @@ export function Navbar({ brandName }: { brandName: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-sage/10 bg-ivory/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-gold/15 bg-[linear-gradient(180deg,rgba(252,248,239,0.95),rgba(247,241,227,0.9))] backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-sage">
           <Sparkles className="h-5 w-5 text-gold" />
@@ -25,7 +25,7 @@ export function Navbar({ brandName }: { brandName: string }) {
 
         <nav className="hidden items-center gap-6 md:flex">
           {links.map(([label, href]) => (
-            <a key={href} href={href} className="text-sm text-sage/80 transition hover:text-sage">
+            <a key={href} href={href} className="text-sm font-medium text-sage/85 transition hover:text-sage">
               {label}
             </a>
           ))}
@@ -48,10 +48,10 @@ export function Navbar({ brandName }: { brandName: string }) {
       </div>
 
       {open && (
-        <div className="border-t border-sage/10 px-4 py-4 md:hidden">
+        <div className="border-t border-gold/15 bg-white/50 px-4 py-4 md:hidden">
           <div className="flex flex-col gap-4">
             {links.map(([label, href]) => (
-              <a key={href} href={href} className="text-sm text-sage/80" onClick={() => setOpen(false)}>
+              <a key={href} href={href} className="text-sm font-medium text-sage/85" onClick={() => setOpen(false)}>
                 {label}
               </a>
             ))}

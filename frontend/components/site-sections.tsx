@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useSiteConfig } from "@/lib/use-site-config";
 import {
   CheckCircle2,
+  CircleDot,
   Facebook,
   Flower2,
   Instagram,
@@ -50,13 +51,13 @@ export function SiteSections() {
       <section className="relative overflow-hidden">
         <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-28">
           <div>
-            <div className="mb-6 inline-flex rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm text-gold">
+            <div className="mb-6 inline-flex rounded-full border border-gold/30 bg-white/70 px-4 py-2 text-sm font-medium text-sage">
               {config.heroTagline}
             </div>
             <h1 className="max-w-4xl font-display text-5xl font-semibold leading-tight text-sage sm:text-6xl">
               Gentle guidance for astrology, healing, and spiritual clarity.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-sage/80">
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-sage/90">
               A bright and welcoming space for consultations, remedies, and learning. Select your service, complete
               the payment, and share your details so our team can reach you with the next steps.
             </p>
@@ -80,6 +81,41 @@ export function SiteSections() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-[1.1fr_0.9fr]">
+              <div className="dev-blessing rounded-[2rem] border border-gold/20 p-5 shadow-glow">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.26em] text-gold">
+                  <Sparkles className="h-4 w-4" />
+                  Ketu Dev Blessings
+                </div>
+                <div className="mt-4 flex items-center gap-4">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-[1.6rem] bg-white/70 p-2">
+                    <KetuDevArt />
+                  </div>
+                  <div>
+                    <p className="font-display text-2xl text-sage">Protection, insight, and spiritual depth</p>
+                    <p className="mt-2 text-sm leading-6 text-sage/80">
+                      A devotional visual accent is now part of the theme so the page feels more aligned with astrology
+                      and blessings, while your actual service data stays unchanged.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-5 shadow-glow">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.26em] text-gold">
+                  <CircleDot className="h-4 w-4" />
+                  Jupiter Motion
+                </div>
+                <div className="cosmic-orbit mt-4 flex h-44 items-center justify-center rounded-[1.6rem] bg-[radial-gradient(circle_at_50%_40%,rgba(255,249,236,0.95),rgba(240,228,197,0.9))]">
+                  <div className="planet-glow h-28 w-28" />
+                  <div className="planet-jupiter h-28 w-28 rounded-full" />
+                </div>
+                <p className="mt-4 text-sm leading-6 text-sage/80">
+                  A soft 3D-style rotating planet adds movement and gives the homepage a stronger astrological feel.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow backdrop-blur">
@@ -92,7 +128,7 @@ export function SiteSections() {
                   <p className="mt-2 text-sm text-sage/80">{mainAstrologer.title}</p>
                 </div>
               </div>
-              <p className="mt-6 text-sm leading-7 text-sage/80">{mainAstrologer.bio}</p>
+              <p className="mt-6 text-sm leading-7 text-sage/90">{mainAstrologer.bio}</p>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Light, calm design" text="A simple spiritual presentation that feels clear, personal, and trustworthy." />
@@ -280,5 +316,30 @@ function SocialLink({ href, icon }: { href: string; icon: ReactNode }) {
     >
       {icon}
     </a>
+  );
+}
+
+function KetuDevArt() {
+  return (
+    <svg viewBox="0 0 120 120" aria-hidden="true" className="h-full w-full">
+      <defs>
+        <linearGradient id="ketuBody" x1="0%" x2="100%" y1="0%" y2="100%">
+          <stop offset="0%" stopColor="#6f8068" />
+          <stop offset="100%" stopColor="#3f4d3d" />
+        </linearGradient>
+        <linearGradient id="ketuAura" x1="0%" x2="0%" y1="0%" y2="100%">
+          <stop offset="0%" stopColor="#f9e7b7" stopOpacity="1" />
+          <stop offset="100%" stopColor="#c89b3c" stopOpacity="0.5" />
+        </linearGradient>
+      </defs>
+      <circle cx="60" cy="22" r="16" fill="url(#ketuAura)" />
+      <path
+        d="M60 40c-16 0-30 14-30 30 0 8 3 16 8 21l22-10 22 10c5-5 8-13 8-21 0-16-14-30-30-30Z"
+        fill="url(#ketuBody)"
+      />
+      <path d="M60 56c-7 0-13 6-13 13s6 13 13 13 13-6 13-13-6-13-13-13Z" fill="#f7f1e3" />
+      <path d="M43 91c4 9 10 16 17 22 7-6 13-13 17-22l-17-8-17 8Z" fill="#c89b3c" />
+      <path d="M60 9l3 7 8 1-6 5 2 8-7-4-7 4 2-8-6-5 8-1 3-7Z" fill="#fff7e4" />
+    </svg>
   );
 }
