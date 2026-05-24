@@ -297,24 +297,44 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         </div>
       </div>
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[1.5rem] border border-sage/10 bg-ivory/70 p-5">
-          <p className="text-sm uppercase tracking-[0.25em] text-gold">Required Flow</p>
-          <div className="mt-4 grid gap-3 text-sm text-sage/80">
-            <p>1. Select the service or consultation amount.</p>
-            <p>2. Fill your contact details{requiresBirthDetails ? " and birth details" : ""}.</p>
-            <p>3. Pay using the QR code or copy the UPI ID manually.</p>
-            <p>4. Use the app-open button only if your phone supports the payment request cleanly.</p>
-            <p>5. Upload your payment screenshot, mark payment completed, then proceed.</p>
+      <form className="grid gap-5" onSubmit={onSubmit}>
+        <div className="mb-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[1.5rem] border border-sage/10 bg-ivory/70 p-5">
+            <p className="text-sm uppercase tracking-[0.25em] text-gold">Required Flow</p>
+            <div className="mt-4 grid gap-3 text-sm text-sage/80">
+              <p>1. Read this flow, then select your service below.</p>
+              <p>2. Pay the exact amount using the QR code, or copy the UPI ID and pay manually.</p>
+              <p>3. You may use the app-open button only as an optional shortcut if your phone supports it.</p>
+              <p>4. After payment, upload the screenshot and complete your details{requiresBirthDetails ? " including birth details" : ""}.</p>
+              <p>5. Only then proceed to WhatsApp confirmation so the astrologer receives your proof and booking details together.</p>
+            </div>
           </div>
-        </div>
 
-        <div className="rounded-[1.5rem] border border-gold/25 bg-gold/10 p-5">
-          <div className="flex items-center gap-2 text-gold">
-            <QrCode className="h-4 w-4" />
-            <p className="text-sm font-semibold uppercase tracking-[0.2em]">Dynamic Payment QR <span className="text-ember">*</span></p>
-          </div>
-          <div className="mt-4 rounded-[1.5rem] bg-white p-4">
+          <div className="rounded-[1.5rem] border border-gold/25 bg-gold/10 p-5">
+            <label className="text-sm font-medium text-sage">
+              Select Service <span className="text-ember">*</span>
+              <select
+                className={inputClass}
+                {...form.register("selectedServiceId", {
+                  onChange: () => {
+                    form.setValue("paymentCompleted", false, { shouldValidate: true });
+                    setConfirmation(null);
+                  }
+                })}
+              >
+                {config.services.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.name} - Rs. {service.price}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <FieldError message={form.formState.errors.selectedServiceId?.message} />
+            <div className="flex items-center gap-2 text-gold">
+              <QrCode className="h-4 w-4" />
+              <p className="text-sm font-semibold uppercase tracking-[0.2em]">Dynamic Payment QR <span className="text-ember">*</span></p>
+            </div>
+            <div className="mt-4 rounded-[1.5rem] bg-white p-4">
             <img src={qrSource} alt={`Payment QR for Rs. ${selectedService?.price ?? 0}`} className="mx-auto h-56 w-56 rounded-2xl object-contain" />
           </div>
           <div className="mt-4 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4 text-sm text-sage">
@@ -350,29 +370,6 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <p className="mt-2 text-sm text-sage/75">{selectedService?.description}</p>
           <p className="mt-3 text-xs font-medium text-ember">Proceed only after real payment. Screenshot proof is required.</p>
         </div>
-      </div>
-
-      <form className="grid gap-5" onSubmit={onSubmit}>
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium text-sage">
-            Select Service <span className="text-ember">*</span>
-            <select
-              className={inputClass}
-              {...form.register("selectedServiceId", {
-                onChange: () => {
-                  form.setValue("paymentCompleted", false, { shouldValidate: true });
-                  setConfirmation(null);
-                }
-              })}
-            >
-              {config.services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name} - Rs. {service.price}
-                </option>
-              ))}
-            </select>
-          </label>
-          <FieldError message={form.formState.errors.selectedServiceId?.message} />
         </div>
 
         <RequiredInput label="Full Name" placeholder="Enter your full name" register={form.register("fullName")} className={inputClass} />
@@ -445,8 +442,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
               {...form.register("paymentCompleted")}
             />
             <span>
-              I have completed the payment of <strong>Rs. {selectedService?.price ?? 0}</strong> using the QR shown
-              above, and I have uploaded the payment screenshot. Only after this can I proceed.
+              I have completed the payment of <strong>Rs. {selectedService?.price ?? 0}</strong>, uploaded the screenshot proof, and I understand that only after this step will my details be sent on WhatsApp to the astrologer.
             </span>
           </label>
           <FieldError message={form.formState.errors.paymentCompleted?.message} />
