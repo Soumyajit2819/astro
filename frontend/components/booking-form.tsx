@@ -1,8 +1,9 @@
 "use client";
 
 import type { SiteConfig } from "@/lib/site-config";
+import { uploadPublicFile } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
@@ -18,7 +19,7 @@ const createBookingSchema = (services: ServiceItem[]) =>
       tob: z.string().optional(),
       pob: z.string().optional(),
       selectedServiceId: z.string().min(1, "Please select a service."),
-      paymentReference: z.string().optional(),
+      paymentScreenshot: z.custom<FileList | undefined>().optional(),
       paymentCompleted: z.boolean().refine((value) => value, {
         message: "Please confirm that the payment is completed before proceeding."
       }),
@@ -27,11 +28,18 @@ const createBookingSchema = (services: ServiceItem[]) =>
     .superRefine((values, context) => {
       const selectedService = services.find((service) => service.id === values.selectedServiceId);
 
-      if (!values.paymentReference || values.paymentReference.trim().length < 6) {
+      const screenshotFile = values.paymentScreenshot?.item(0);
+      if (!screenshotFile) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["paymentReference"],
-          message: "Enter the UPI transaction ID or payment reference."
+          path: ["paymentScreenshot"],
+          message: "Upload the payment screenshot before proceeding."
+        });
+      } else if (!screenshotFile.type.startsWith("image/")) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paymentScreenshot"],
+          message: "Upload a valid image file for payment proof."
         });
       }
 
@@ -94,7 +102,6 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       tob: "",
       pob: "",
       selectedServiceId: config.services[0]?.id ?? "",
-      paymentReference: "",
       paymentCompleted: false,
       message: ""
     }
@@ -103,6 +110,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const selectedServiceId = form.watch("selectedServiceId");
   const selectedService = config.services.find((service) => service.id === selectedServiceId) ?? config.services[0];
   const requiresBirthDetails = selectedService?.type !== "class";
+  const paymentScreenshot = form.watch("paymentScreenshot");
 
   const upiLink = useMemo(() => {
     return buildUpiLink(mainAstrologer.upiId, mainAstrologer.name, selectedService?.price ?? 0, selectedService?.name ?? "Consultation");
@@ -110,37 +118,52 @@ export function BookingForm({ config }: { config: SiteConfig }) {
 
   const qrSource = selectedService?.paymentQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
 
-  const onSubmit = form.handleSubmit((values) => {
+  const onSubmit = form.handleSubmit(async (values) => {
     const service = config.services.find((item) => item.id === values.selectedServiceId);
     if (!service) {
       setConfirmation("Please select a valid service.");
       return;
     }
 
-    const details = [
-      `Hello ${mainAstrologer.name},`,
-      `Payment done confirmation for: ${service.name}`,
-      `Amount paid: Rs. ${service.price}`,
-      `UPI Ref No: ${values.paymentReference}`,
-      `Name: ${values.fullName}`,
-      `Phone: ${values.phoneNumber}`,
-      `Email: ${values.email}`
-    ];
-
-    if (service.type !== "class") {
-      details.push(`DOB: ${values.dob}`, `TOB: ${values.tob}`, `POB: ${values.pob}`);
+    const screenshotFile = values.paymentScreenshot?.item(0);
+    if (!screenshotFile) {
+      setConfirmation("Upload the payment screenshot before proceeding.");
+      return;
     }
 
-    details.push(`Message: ${values.message || "N/A"}`, "Client has confirmed payment completion. Please follow up with the next step.");
+    try {
+      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "astrologer-images";
+      const extension = screenshotFile.name.split(".").pop() || "jpg";
+      const path = `payment-proofs/${Date.now()}-${values.phoneNumber}.${extension}`;
+      const screenshotUrl = await uploadPublicFile(bucket, path, screenshotFile);
 
-    const whatsappText = encodeURIComponent(details.join("\n"));
+      const details = [
+        `Hello ${mainAstrologer.name},`,
+        `Payment done confirmation for: ${service.name}`,
+        `Amount paid: Rs. ${service.price}`,
+        `Payment Screenshot: ${screenshotUrl}`,
+        `Name: ${values.fullName}`,
+        `Phone: ${values.phoneNumber}`,
+        `Email: ${values.email}`
+      ];
 
-    const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${whatsappText}`;
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      if (service.type !== "class") {
+        details.push(`DOB: ${values.dob}`, `TOB: ${values.tob}`, `POB: ${values.pob}`);
+      }
 
-    setConfirmation(
-      `Payment marked complete for Rs. ${service.price}. The astrologer has the confirmation message draft, and your customer now sees that your team will reach out next.`
-    );
+      details.push(`Message: ${values.message || "N/A"}`, "Client has uploaded the payment screenshot. Please verify and follow up with the next step.");
+
+      const whatsappText = encodeURIComponent(details.join("\n"));
+
+      const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${whatsappText}`;
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+
+      setConfirmation(
+        `Payment proof uploaded for Rs. ${service.price}. The astrologer will receive the screenshot link and can verify before follow-up.`
+      );
+    } catch (uploadError) {
+      setConfirmation(uploadError instanceof Error ? uploadError.message : "Payment screenshot upload failed.");
+    }
   });
 
   const copyUpiId = async () => {
@@ -184,7 +207,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
             <p>1. Select the service or consultation amount.</p>
             <p>2. Fill your contact details{requiresBirthDetails ? " and birth details" : ""}.</p>
             <p>3. Scan the QR for the exact amount shown here.</p>
-            <p>4. Enter your UPI transaction ID, mark payment completed, then proceed.</p>
+            <p>4. Upload your payment screenshot, mark payment completed, then proceed.</p>
           </div>
         </div>
 
@@ -201,7 +224,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           </p>
           <p className="mt-1 font-display text-3xl text-sage">Rs. {selectedService?.price ?? 0}</p>
           <p className="mt-2 text-sm text-sage/75">{selectedService?.description}</p>
-          <p className="mt-3 text-xs font-medium text-ember">Proceed only after real payment. UPI reference number is required.</p>
+          <p className="mt-3 text-xs font-medium text-ember">Proceed only after real payment. Screenshot proof is required.</p>
         </div>
       </div>
 
@@ -260,13 +283,23 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           </>
         ) : null}
 
-        <RequiredInput
-          label="UPI Transaction ID / Reference Number"
-          placeholder="Enter the payment reference number"
-          register={form.register("paymentReference")}
-          className={inputClass}
-        />
-        <FieldError message={form.formState.errors.paymentReference?.message} />
+        <label className="text-sm font-medium text-sage">
+          Payment Screenshot <span className="text-ember">*</span>
+          <div className="mt-2 rounded-[1.5rem] border border-dashed border-gold/40 bg-gold/5 p-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-sage">
+              <Upload className="h-4 w-4 text-gold" />
+              Upload the screenshot after payment
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="block w-full text-sm text-sage file:mr-4 file:rounded-full file:border-0 file:bg-sage file:px-4 file:py-2 file:font-medium file:text-ivory"
+              {...form.register("paymentScreenshot")}
+            />
+            <p className="mt-2 text-xs text-sage/65">Accepted proof: JPG, PNG, WEBP, or any image from your payment app.</p>
+          </div>
+        </label>
+        <FieldError message={form.formState.errors.paymentScreenshot?.message} />
 
         <label className="text-sm font-medium text-sage">
           Additional Message
@@ -289,7 +322,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
             />
             <span>
               I have completed the payment of <strong>Rs. {selectedService?.price ?? 0}</strong> using the QR shown
-              above, and I have entered the correct UPI reference number. Only after this can I proceed.
+              above, and I have uploaded the payment screenshot. Only after this can I proceed.
             </span>
           </label>
           <FieldError message={form.formState.errors.paymentCompleted?.message} />
@@ -298,7 +331,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         <div>
           <button
             type="submit"
-            disabled={!form.watch("paymentCompleted") || !form.watch("paymentReference")?.trim()}
+            disabled={!form.watch("paymentCompleted") || !paymentScreenshot?.item(0)}
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-3 font-semibold text-ivory transition hover:bg-sage/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <MessageCircle className="h-4 w-4" />
