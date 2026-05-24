@@ -98,7 +98,7 @@ export function SiteSections() {
               <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Light, calm design" text="A simple spiritual presentation that feels clear, personal, and trustworthy." />
               <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Guided process" text="Clients move step by step from service selection to payment confirmation." />
               <FeatureCard icon={<Phone className="h-5 w-5" />} title="Direct follow-up" text="Once payment is marked done, the astrologer receives a ready message." />
-              <FeatureCard icon={<Flower2 className="h-5 w-5" />} title="Personal details intake" text="DOB, TOB, and POB are collected before the consultation process begins." />
+              <FeatureCard icon={<Flower2 className="h-5 w-5" />} title="Smart details intake" text="Consultations collect birth details, while classes keep the form simpler." />
             </div>
           </div>
         </div>
@@ -135,7 +135,7 @@ export function SiteSections() {
               {[
                 "Light theme with a restrained 3-color palette",
                 "Service cards with visible pricing",
-                "Mandatory intake details before confirmation",
+                "Service-specific intake before confirmation",
                 "Manual payment confirmation without a payment gateway"
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 rounded-[1.5rem] border border-sage/10 bg-white/75 p-4">

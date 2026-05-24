@@ -6,22 +6,55 @@ import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck } from "lucide-r
 import { useMemo, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
+import type { ServiceItem } from "@/lib/site-config";
 
-const bookingSchema = z.object({
-  fullName: z.string().min(2, "Please enter your name."),
-  phoneNumber: z.string().min(10, "Please enter a valid phone number."),
-  email: z.string().email("Please enter a valid email."),
-  dob: z.string().min(1, "Date of birth is required."),
-  tob: z.string().min(1, "Time of birth is required."),
-  pob: z.string().min(2, "Place of birth is required."),
-  selectedServiceId: z.string().min(1, "Please select a service."),
-  paymentCompleted: z.boolean().refine((value) => value, {
-    message: "Please confirm that the payment is completed before proceeding."
-  }),
-  message: z.string().optional()
-});
+const createBookingSchema = (services: ServiceItem[]) =>
+  z
+    .object({
+      fullName: z.string().min(2, "Please enter your name."),
+      phoneNumber: z.string().min(10, "Please enter a valid phone number."),
+      email: z.string().email("Please enter a valid email."),
+      dob: z.string().optional(),
+      tob: z.string().optional(),
+      pob: z.string().optional(),
+      selectedServiceId: z.string().min(1, "Please select a service."),
+      paymentCompleted: z.boolean().refine((value) => value, {
+        message: "Please confirm that the payment is completed before proceeding."
+      }),
+      message: z.string().optional()
+    })
+    .superRefine((values, context) => {
+      const selectedService = services.find((service) => service.id === values.selectedServiceId);
+      if (selectedService?.type === "class") {
+        return;
+      }
 
-type BookingFormValues = z.infer<typeof bookingSchema>;
+      if (!values.dob) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["dob"],
+          message: "Date of birth is required."
+        });
+      }
+
+      if (!values.tob) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["tob"],
+          message: "Time of birth is required."
+        });
+      }
+
+      if (!values.pob || values.pob.length < 2) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pob"],
+          message: "Place of birth is required."
+        });
+      }
+    });
+
+type BookingFormValues = z.infer<ReturnType<typeof createBookingSchema>>;
 
 function buildUpiLink(upiId: string, name: string, amount: number, serviceName: string) {
   const params = new URLSearchParams({
@@ -39,6 +72,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const mainAstrologer = config.astrologers[0];
+  const bookingSchema = useMemo(() => createBookingSchema(config.services), [config.services]);
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
@@ -57,6 +91,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
 
   const selectedServiceId = form.watch("selectedServiceId");
   const selectedService = config.services.find((service) => service.id === selectedServiceId) ?? config.services[0];
+  const requiresBirthDetails = selectedService?.type !== "class";
 
   const upiLink = useMemo(() => {
     return buildUpiLink(mainAstrologer.upiId, mainAstrologer.name, selectedService?.price ?? 0, selectedService?.name ?? "Consultation");
@@ -71,21 +106,22 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       return;
     }
 
-    const whatsappText = encodeURIComponent(
-      [
-        `Hello ${mainAstrologer.name},`,
-        `Payment done confirmation for: ${service.name}`,
-        `Amount paid: Rs. ${service.price}`,
-        `Name: ${values.fullName}`,
-        `Phone: ${values.phoneNumber}`,
-        `Email: ${values.email}`,
-        `DOB: ${values.dob}`,
-        `TOB: ${values.tob}`,
-        `POB: ${values.pob}`,
-        `Message: ${values.message || "N/A"}`,
-        "Client has confirmed payment completion. Please follow up with the next step."
-      ].join("\n")
-    );
+    const details = [
+      `Hello ${mainAstrologer.name},`,
+      `Payment done confirmation for: ${service.name}`,
+      `Amount paid: Rs. ${service.price}`,
+      `Name: ${values.fullName}`,
+      `Phone: ${values.phoneNumber}`,
+      `Email: ${values.email}`
+    ];
+
+    if (service.type !== "class") {
+      details.push(`DOB: ${values.dob}`, `TOB: ${values.tob}`, `POB: ${values.pob}`);
+    }
+
+    details.push(`Message: ${values.message || "N/A"}`, "Client has confirmed payment completion. Please follow up with the next step.");
+
+    const whatsappText = encodeURIComponent(details.join("\n"));
 
     const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${whatsappText}`;
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
@@ -134,7 +170,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <p className="text-sm uppercase tracking-[0.25em] text-gold">Required Flow</p>
           <div className="mt-4 grid gap-3 text-sm text-sage/80">
             <p>1. Select the service or consultation amount.</p>
-            <p>2. Fill name, email, phone, DOB, TOB, and POB.</p>
+            <p>2. Fill your contact details{requiresBirthDetails ? " and birth details" : ""}.</p>
             <p>3. Scan the QR for the exact amount shown here.</p>
             <p>4. Mark payment completed, then proceed to astrologer confirmation.</p>
           </div>
@@ -193,19 +229,23 @@ export function BookingForm({ config }: { config: SiteConfig }) {
         />
         <FieldError message={form.formState.errors.phoneNumber?.message} />
 
-        <RequiredInput label="Date of Birth" type="date" register={form.register("dob")} className={inputClass} />
-        <FieldError message={form.formState.errors.dob?.message} />
+        {requiresBirthDetails ? (
+          <>
+            <RequiredInput label="Date of Birth" type="date" register={form.register("dob")} className={inputClass} />
+            <FieldError message={form.formState.errors.dob?.message} />
 
-        <RequiredInput label="Time of Birth" type="time" register={form.register("tob")} className={inputClass} />
-        <FieldError message={form.formState.errors.tob?.message} />
+            <RequiredInput label="Time of Birth" type="time" register={form.register("tob")} className={inputClass} />
+            <FieldError message={form.formState.errors.tob?.message} />
 
-        <RequiredInput
-          label="Place of Birth"
-          placeholder="Enter your place of birth"
-          register={form.register("pob")}
-          className={inputClass}
-        />
-        <FieldError message={form.formState.errors.pob?.message} />
+            <RequiredInput
+              label="Place of Birth"
+              placeholder="Enter your place of birth"
+              register={form.register("pob")}
+              className={inputClass}
+            />
+            <FieldError message={form.formState.errors.pob?.message} />
+          </>
+        ) : null}
 
         <label className="text-sm font-medium text-sage">
           Additional Message
