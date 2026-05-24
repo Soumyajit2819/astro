@@ -134,14 +134,16 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     try {
       const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "astrologer-images";
       const extension = screenshotFile.name.split(".").pop() || "jpg";
-      const path = `payment-proofs/${Date.now()}-${values.phoneNumber}.${extension}`;
+      const safePhone = values.phoneNumber.replace(/\D/g, "") || "client";
+      const path = `payment-proofs/${Date.now()}-${safePhone}.${extension}`;
       const screenshotUrl = await uploadPublicFile(bucket, path, screenshotFile);
 
       const details = [
         `Hello ${mainAstrologer.name},`,
         `Payment done confirmation for: ${service.name}`,
         `Amount paid: Rs. ${service.price}`,
-        `Payment Screenshot: ${screenshotUrl}`,
+        "Payment Screenshot Link:",
+        screenshotUrl,
         `Name: ${values.fullName}`,
         `Phone: ${values.phoneNumber}`,
         `Email: ${values.email}`
