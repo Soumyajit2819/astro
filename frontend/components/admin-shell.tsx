@@ -2,18 +2,58 @@
 
 import type { ReactNode } from "react";
 import type { AstrologerItem, SiteConfig } from "@/lib/site-config";
-import { uploadPublicFile } from "@/lib/supabase";
+import { selectRows, uploadPublicFile } from "@/lib/supabase";
 import { useSiteConfig } from "@/lib/use-site-config";
-import { AlertCircle, LogOut, Plus, RotateCcw, Save, Upload } from "lucide-react";
+import { AlertCircle, ExternalLink, LogOut, Plus, RefreshCcw, RotateCcw, Save, Upload } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type PaymentProofRow = {
+  id?: number;
+  customer_name?: string;
+  email?: string;
+  phone_number?: string;
+  service_name?: string;
+  amount?: number | string;
+  payment_screenshot_url?: string;
+  notes?: string;
+  status?: string;
+  created_at?: string;
+};
 
 export function AdminShell() {
   const { config, saveConfig, resetConfig, ready, loading, error, reload } = useSiteConfig();
   const [draft, setDraft] = useState<SiteConfig | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [paymentProofs, setPaymentProofs] = useState<PaymentProofRow[]>([]);
+  const [paymentProofError, setPaymentProofError] = useState<string | null>(null);
+  const [paymentProofLoading, setPaymentProofLoading] = useState(false);
 
   const workingConfig = draft ?? config;
+
+  const loadPaymentProofs = async () => {
+    setPaymentProofLoading(true);
+    setPaymentProofError(null);
+
+    try {
+      const rows = await selectRows<PaymentProofRow>("payment_proofs");
+      const sortedRows = [...rows].sort((left, right) => (right.created_at || "").localeCompare(left.created_at || ""));
+      setPaymentProofs(sortedRows);
+    } catch (loadError) {
+      setPaymentProofError(
+        loadError instanceof Error
+          ? `${loadError.message} Create the payment_proofs table to review uploaded screenshots here.`
+          : "Unable to load payment proofs."
+      );
+      setPaymentProofs([]);
+    } finally {
+      setPaymentProofLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadPaymentProofs();
+  }, []);
 
   if (!ready) {
     return <div className="min-h-screen bg-ivory" />;
@@ -193,6 +233,68 @@ export function AdminShell() {
 
         <div className="mt-8 grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-8">
+            <section className="rounded-[2rem] border border-sage/10 bg-white/85 p-6 shadow-glow">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-display text-2xl text-sage">Payment Proofs</h2>
+                  <p className="mt-2 text-sm leading-6 text-sage/75">
+                    Uploaded user screenshots appear here so the astrologer or admin can manually check the customer
+                    name, selected service, amount, and proof image.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void loadPaymentProofs()}
+                  className="inline-flex items-center gap-2 rounded-full border border-sage/15 bg-ivory/70 px-4 py-2 text-sm font-medium text-sage"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  Refresh Proofs
+                </button>
+              </div>
+
+              {paymentProofLoading ? <p className="mt-4 text-sm text-sage/65">Loading uploaded payment proofs...</p> : null}
+              {paymentProofError ? <p className="mt-4 text-sm text-ember">{paymentProofError}</p> : null}
+              {!paymentProofLoading && !paymentProofError && paymentProofs.length === 0 ? (
+                <p className="mt-4 text-sm text-sage/65">No payment proofs have been uploaded yet.</p>
+              ) : null}
+
+              {!paymentProofLoading && !paymentProofError && paymentProofs.length > 0 ? (
+                <div className="mt-6 grid gap-4">
+                  {paymentProofs.map((proof, index) => (
+                    <div key={proof.id ?? index} className="rounded-3xl border border-sage/10 bg-ivory/60 p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-sage">{proof.customer_name || "Unnamed customer"}</p>
+                          <p className="text-sm text-sage/70">{proof.service_name || "Unknown service"}</p>
+                        </div>
+                        <span className="inline-flex rounded-full bg-gold/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-gold">
+                          {proof.status || "pending"}
+                        </span>
+                      </div>
+                      <div className="mt-4 grid gap-2 text-sm text-sage/80">
+                        <p>Email: {proof.email || "N/A"}</p>
+                        <p>Phone: {proof.phone_number || "N/A"}</p>
+                        <p>Amount: Rs. {proof.amount ?? "N/A"}</p>
+                        <p>Uploaded: {proof.created_at ? new Date(proof.created_at).toLocaleString() : "N/A"}</p>
+                        <p>Notes: {proof.notes || "N/A"}</p>
+                      </div>
+                      {proof.payment_screenshot_url ? (
+                        <a
+                          href={proof.payment_screenshot_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-4 inline-flex items-center gap-2 rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Open Screenshot
+                        </a>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+
             <EditorCard title="Brand & Hero">
               <EditorInput label="Brand name" value={workingConfig.brandName} onChange={(value) => updateRootField("brandName", value)} />
               <EditorInput label="Hero tagline" value={workingConfig.heroTagline} onChange={(value) => updateRootField("heroTagline", value)} />
@@ -394,6 +496,9 @@ export function AdminShell() {
           </p>
           <p className="mt-2">
             To save service-wise QR images for different prices, add <code>payment_qr_url</code> to the <code>services</code> table.
+          </p>
+          <p className="mt-2">
+            To review uploaded payment screenshots in admin, create a <code>payment_proofs</code> table using the new SQL setup file.
           </p>
         </div>
       </div>

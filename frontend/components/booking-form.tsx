@@ -1,7 +1,7 @@
 "use client";
 
 import type { SiteConfig } from "@/lib/site-config";
-import { uploadPublicFile } from "@/lib/supabase";
+import { insertRows, uploadPublicFile } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -89,6 +89,7 @@ function buildUpiLink(upiId: string, name: string, amount: number, serviceName: 
 export function BookingForm({ config }: { config: SiteConfig }) {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
   const mainAstrologer = config.astrologers[0];
   const bookingSchema = useMemo(() => createBookingSchema(config.services), [config.services]);
 
@@ -137,6 +138,20 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       const safePhone = values.phoneNumber.replace(/\D/g, "") || "client";
       const path = `payment-proofs/${Date.now()}-${safePhone}.${extension}`;
       const screenshotUrl = await uploadPublicFile(bucket, path, screenshotFile);
+      setProofUrl(screenshotUrl);
+
+      await insertRows("payment_proofs", [
+        {
+          customer_name: values.fullName,
+          email: values.email,
+          phone_number: values.phoneNumber,
+          service_name: service.name,
+          amount: service.price,
+          payment_screenshot_url: screenshotUrl,
+          notes: values.message || "",
+          status: "pending"
+        }
+      ]);
 
       const details = [
         `Hello ${mainAstrologer.name},`,
@@ -161,9 +176,10 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
 
       setConfirmation(
-        `Payment proof uploaded for Rs. ${service.price}. The astrologer will receive the screenshot link and can verify before follow-up.`
+        `Payment proof uploaded for Rs. ${service.price}. If WhatsApp does not show the link properly, use the buttons below to open or copy the screenshot link manually.`
       );
     } catch (uploadError) {
+      setProofUrl(null);
       setConfirmation(uploadError instanceof Error ? uploadError.message : "Payment screenshot upload failed.");
     }
   });
@@ -172,6 +188,15 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     await navigator.clipboard.writeText(mainAstrologer.upiId);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyProofLink = async () => {
+    if (!proofUrl) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(proofUrl);
+    setConfirmation("Screenshot link copied. Paste it directly into WhatsApp if the link is not visible in the draft.");
   };
 
   const inputClass =
@@ -348,6 +373,25 @@ export function BookingForm({ config }: { config: SiteConfig }) {
             <CheckCircle2 className="mt-0.5 h-5 w-5 text-gold" />
             <div>
               <p>{confirmation}</p>
+              {proofUrl ? (
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href={proofUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory"
+                  >
+                    Open Screenshot
+                  </a>
+                  <button
+                    type="button"
+                    onClick={copyProofLink}
+                    className="inline-flex items-center justify-center rounded-full border border-sage/15 bg-white/70 px-4 py-2 text-xs font-semibold text-sage"
+                  >
+                    Copy Screenshot Link
+                  </button>
+                </div>
+              ) : null}
               <p className="mt-2 flex items-center gap-2 font-medium text-sage">
                 <ShieldCheck className="h-4 w-4 text-gold" />
                 Our team will reach you soon.
