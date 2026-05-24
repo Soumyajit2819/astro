@@ -75,7 +75,7 @@ export const defaultSiteConfig: SiteConfig = {
       phone: "+91 98765 43210",
       whatsapp: "919876543210",
       photoUrl: "",
-      upiId: "anayaastro@upi",
+      upiId: "7584972080jio@jio",
       instagram: "https://instagram.com",
       youtube: "https://youtube.com",
       facebook: "https://facebook.com",
@@ -86,7 +86,7 @@ export const defaultSiteConfig: SiteConfig = {
     {
       id: "service-1",
       name: "Career Consultation",
-      price: 501,
+      price: 201,
       description: "Career direction, job timing, and personal remedies.",
       type: "consultation",
       paymentQrUrl: ""
