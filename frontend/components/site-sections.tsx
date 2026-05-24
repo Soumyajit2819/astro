@@ -1,11 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { useSiteConfig } from "@/lib/use-site-config";
 import {
   CheckCircle2,
-  CircleDot,
   Facebook,
   Flower2,
   Instagram,
@@ -81,57 +79,6 @@ export function SiteSections() {
                   <p className="mt-1 text-sm text-sage/65">{label}</p>
                 </div>
               ))}
-            </div>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-[1.1fr_0.9fr]">
-              <div className="dev-blessing rounded-[2rem] border border-gold/20 p-5 shadow-glow">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.26em] text-gold">
-                  <Sparkles className="h-4 w-4" />
-                  Ketu Dev Blessings
-                </div>
-                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="relative h-48 overflow-hidden rounded-[1.6rem] border border-gold/20 bg-white/75 sm:h-52 sm:w-40">
-                    <Image
-                      src="/theme/ketu-dev-theme.jpeg"
-                      alt="Ketu Dev blessing"
-                      fill
-                      sizes="(max-width: 640px) 100vw, 160px"
-                      className="object-contain p-2"
-                    />
-                    <div className="pointer-events-none absolute inset-x-3 bottom-3 h-10 rounded-full bg-gold/15 blur-xl" />
-                  </div>
-                  <div>
-                    <p className="font-display text-2xl text-sage">Protection, insight, and spiritual depth</p>
-                    <p className="mt-2 text-sm leading-6 text-sage/80">
-                      The Ketu Dev blessing image is now placed inside the user theme in a clean devotional card, sized
-                      to stay clear of surrounding text and content.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-5 shadow-glow">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.26em] text-gold">
-                  <CircleDot className="h-4 w-4" />
-                  Jupiter Motion
-                </div>
-                <div className="cosmic-orbit mt-4 flex h-52 items-center justify-center overflow-hidden rounded-[1.6rem] bg-[radial-gradient(circle_at_50%_40%,rgba(255,249,236,0.98),rgba(240,228,197,0.88))]">
-                  <div className="planet-glow h-36 w-36" />
-                  <div className="planet-jupiter h-36 w-36 overflow-hidden rounded-full">
-                    <Image
-                      src="/theme/jupiter-theme.jpeg"
-                      alt="Rotating Jupiter planet"
-                      fill
-                      sizes="144px"
-                      className="jupiter-image object-cover"
-                    />
-                  </div>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-sage/80">
-                  The real Jupiter image is wrapped inside a rotating 3D-style frame so the homepage feels smoother,
-                  more spiritual, and visually richer without disturbing the layout.
-                </p>
-              </div>
             </div>
           </div>
 
