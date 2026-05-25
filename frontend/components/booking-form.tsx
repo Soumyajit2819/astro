@@ -82,7 +82,7 @@ type BookingDraft = Omit<BookingFormValues, "paymentScreenshot">;
 function buildUpiLink(upiId: string, name: string, amount: number, serviceName: string) {
   const params = [
     `pa=${upiId}`,
-    `pn=${encodeURIComponent(name)}`,
+    `pn=${name.replace(/\s+/g, "+")}`,
     `am=${encodeURIComponent(String(amount))}`,
     "cu=INR",
     `tn=${encodeURIComponent(`${serviceName} consultation payment`)}`
