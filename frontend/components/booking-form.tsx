@@ -400,6 +400,9 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <p className="mt-2 text-xs text-sage/65">
             This opens the UPI app with the selected service amount. If BHIM or another app still has trouble, use the QR code or copied UPI ID instead.
           </p>
+          <p className="mt-2 rounded-2xl border border-ember/15 bg-ember/5 px-4 py-3 text-xs text-ember">
+            If you are using BHIM Pay and facing issues, try another payment method or use the QR code or UPI ID shown above.
+          </p>
           <p className="mt-4 text-sm text-sage/75">
             Selected service: <span className="font-semibold text-sage">{selectedService?.name}</span>
           </p>

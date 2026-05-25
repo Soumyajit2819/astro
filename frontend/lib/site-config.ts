@@ -149,24 +149,5 @@ export const defaultSiteConfig: SiteConfig = {
       answer: "Select the class, complete the UPI payment, send the screenshot, and the astrologer will confirm your seat and class details."
     }
   ],
-  testimonials: [
-    {
-      id: "t-1",
-      name: "Riya",
-      quote: "Very clear guidance and a peaceful consultation experience.",
-      rating: 5
-    },
-    {
-      id: "t-2",
-      name: "Karan",
-      quote: "The class structure is simple to follow and very practical.",
-      rating: 5
-    },
-    {
-      id: "t-3",
-      name: "Nisha",
-      quote: "Booking through UPI and WhatsApp felt easy and personal.",
-      rating: 4
-    }
-  ]
+  testimonials: []
 };

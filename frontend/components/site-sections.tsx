@@ -39,6 +39,7 @@ type FeedbackCardItem = {
 export function SiteSections() {
   const { config, ready, loading, error } = useSiteConfig();
   const [feedbackItems, setFeedbackItems] = useState<FeedbackCardItem[]>([]);
+  const [showAllFeedback, setShowAllFeedback] = useState(false);
   const mainAstrologer = config.astrologers[0];
 
   useEffect(() => {
@@ -283,16 +284,8 @@ export function SiteSections() {
   }
 
   function FeedbackSection() {
-    const visibleFeedback =
-      feedbackItems.length > 0
-        ? feedbackItems
-        : config.testimonials.map((item) => ({
-            id: item.id,
-            name: item.name,
-            service: "Client Feedback",
-            quote: item.quote,
-            rating: item.rating
-          }));
+    const latestFeedback = feedbackItems.slice(0, 3);
+    const visibleFeedback = showAllFeedback ? feedbackItems : latestFeedback;
 
     return (
       <section id="feedback" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -300,28 +293,45 @@ export function SiteSections() {
           <div>
             <SectionHeading
               eyebrow="Feedback"
-              title="Client feedback appears here after consultation"
-              description="Submitted feedback is shown in these cards so new visitors can read what other clients shared after their consultation or class."
+              title="Latest client feedback"
+              description="The newest three reviews are highlighted here. Visitors can open the full list to read all feedback shared by other clients."
             />
-            <div className="mt-8 grid gap-4">
-              {visibleFeedback.map((item) => (
-                <div key={item.id} className="rounded-[1.75rem] border border-sage/10 bg-white/80 p-5 shadow-glow">
-                  <p className="text-sm uppercase tracking-[0.2em] text-gold">{item.service}</p>
-                  <div className="mt-3 flex items-center gap-1 text-gold">
-                    {Array.from({ length: item.rating }).map((_, index) => (
-                      <Star key={`${item.id}-star-${index}`} className="h-4 w-4 fill-gold text-gold" />
-                    ))}
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-sage/85">"{item.quote}"</p>
-                  <p className="mt-4 font-display text-lg text-sage">{item.name}</p>
+            {feedbackItems.length === 0 ? (
+              <div className="mt-8 rounded-[1.75rem] border border-sage/10 bg-white/80 p-5 text-sm text-sage/75 shadow-glow">
+                No feedback has been shared yet.
+              </div>
+            ) : (
+              <>
+                <div className="mt-8 grid gap-4">
+                  {visibleFeedback.map((item) => (
+                    <div key={item.id} className="rounded-[1.75rem] border border-sage/10 bg-white/80 p-5 shadow-glow">
+                      <p className="text-sm uppercase tracking-[0.2em] text-gold">{item.service}</p>
+                      <div className="mt-3 flex items-center gap-1 text-gold">
+                        {Array.from({ length: item.rating }).map((_, index) => (
+                          <Star key={`${item.id}-star-${index}`} className="h-4 w-4 fill-gold text-gold" />
+                        ))}
+                      </div>
+                      <p className="mt-3 text-sm leading-7 text-sage/85">"{item.quote}"</p>
+                      <p className="mt-4 font-display text-lg text-sage">{item.name}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                {feedbackItems.length > 3 ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllFeedback((current) => !current)}
+                    className="mt-5 inline-flex rounded-full border border-sage/15 bg-white px-5 py-3 text-sm font-semibold text-sage"
+                  >
+                    {showAllFeedback ? "Show latest feedback" : "View all feedback"}
+                  </button>
+                ) : null}
+              </>
+            )}
           </div>
           <FeedbackForm
             services={config.services}
             onSubmitted={(item) => {
-              setFeedbackItems((current) => [item, ...current].slice(0, 6));
+              setFeedbackItems((current) => [item, ...current]);
             }}
           />
         </div>
