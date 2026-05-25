@@ -1,5 +1,6 @@
 "use client";
 
+import type { ServiceItem } from "@/lib/site-config";
 import { insertRows } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Star } from "lucide-react";
@@ -25,8 +26,10 @@ type InsertedFeedbackRow = {
 };
 
 export function FeedbackForm({
+  services,
   onSubmitted
 }: {
+  services: ServiceItem[];
   onSubmitted?: (item: { id: string; name: string; service: string; quote: string; rating: number }) => void;
 }) {
   const [status, setStatus] = useState<string | null>(null);
@@ -37,7 +40,7 @@ export function FeedbackForm({
     defaultValues: {
       fullName: "",
       email: "",
-      consultationType: "",
+      consultationType: services[0]?.name ?? "",
       rating: 5,
       feedback: ""
     }
@@ -106,12 +109,16 @@ export function FeedbackForm({
         <RequiredInput label="Email" placeholder="Your email" register={form.register("email")} className={inputClass} />
         <FieldError message={form.formState.errors.email?.message} />
 
-        <RequiredInput
-          label="Consultation / Service"
-          placeholder="Example: Career Consultation"
-          register={form.register("consultationType")}
-          className={inputClass}
-        />
+        <label className="text-sm font-medium text-sage">
+          Consultation / Service <span className="text-ember">*</span>
+          <select className={inputClass} {...form.register("consultationType")}>
+            {services.map((service) => (
+              <option key={service.id} value={service.name}>
+                {service.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <FieldError message={form.formState.errors.consultationType?.message} />
 
         <label className="text-sm font-medium text-sage">

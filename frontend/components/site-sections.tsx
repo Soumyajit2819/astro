@@ -319,6 +319,7 @@ export function SiteSections() {
             </div>
           </div>
           <FeedbackForm
+            services={config.services}
             onSubmitted={(item) => {
               setFeedbackItems((current) => [item, ...current].slice(0, 6));
             }}
