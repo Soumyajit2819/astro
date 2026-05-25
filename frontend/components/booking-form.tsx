@@ -11,7 +11,6 @@ import type { ServiceItem } from "@/lib/site-config";
 
 const BOOKING_DRAFT_STORAGE_KEY = "astro-booking-draft";
 const PAYMENT_MERCHANT_NAME = "Arijit Talukdar";
-const PAYMENT_UPI_LABEL = "ArijitTalukdar";
 const PAYMENT_UPI_ID = "7584972080jio@jio";
 
 const createBookingSchema = (services: ServiceItem[]) =>
@@ -80,16 +79,8 @@ const createBookingSchema = (services: ServiceItem[]) =>
 type BookingFormValues = z.infer<ReturnType<typeof createBookingSchema>>;
 type BookingDraft = Omit<BookingFormValues, "paymentScreenshot">;
 
-function buildUpiLink(upiId: string, name: string, amount: number, serviceName: string) {
-  const params = [
-    `pa=${upiId}`,
-    `pn=${PAYMENT_UPI_LABEL}`,
-    `am=${encodeURIComponent(String(amount))}`,
-    "cu=INR",
-    `tn=${encodeURIComponent(serviceName)}`
-  ];
-
-  return `upi://pay?${params.join("&")}`;
+function buildUpiLink(upiId: string) {
+  return `upi://pay?pa=${upiId}`;
 }
 
 export function BookingForm({ config }: { config: SiteConfig }) {
@@ -121,13 +112,11 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const selectedService = config.services.find((service) => service.id === selectedServiceId) ?? config.services[0];
   const requiresBirthDetails = selectedService?.type !== "class";
   const paymentScreenshot = form.watch("paymentScreenshot");
-  const selectedServiceAmount = selectedService?.price ?? 0;
-
   const upiLink = useMemo(() => {
-    return buildUpiLink(paymentUpiId, paymentMerchantName, selectedServiceAmount, selectedService?.name ?? "Consultation");
-  }, [paymentMerchantName, paymentUpiId, selectedService?.name, selectedServiceAmount]);
+    return buildUpiLink(paymentUpiId);
+  }, [paymentUpiId]);
   const paymentActionUrl = upiLink;
-  const paymentActionLabel = "Open UPI App (Optional)";
+  const paymentActionLabel = "Open UPI App";
 
   const qrSource = selectedService?.paymentQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
 
@@ -349,8 +338,8 @@ export function BookingForm({ config }: { config: SiteConfig }) {
             <p className="text-sm uppercase tracking-[0.25em] text-gold">Required Flow</p>
             <div className="mt-4 grid gap-3 text-sm text-sage/80">
               <p>1. Read this flow, then select your service below.</p>
-              <p>2. Pay the exact amount using the QR code, or copy the UPI ID and pay manually.</p>
-              <p>3. You may use the app-open button only as an optional shortcut if your phone supports it.</p>
+              <p>2. Check the service price shown here, then pay that exact amount using the QR code or copied UPI ID.</p>
+              <p>3. Open UPI App only opens the app with the UPI ID. You still need to enter or confirm the amount there.</p>
               <p>4. After payment, upload the screenshot and complete your details{requiresBirthDetails ? " including birth details" : ""}.</p>
               <p>5. Only then proceed to WhatsApp confirmation so the astrologer receives your proof and booking details together.</p>
             </div>
@@ -408,7 +397,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
             {paymentActionLabel}
           </a>
           <p className="mt-2 text-xs text-sage/65">
-            This button is only a convenience option. If BHIM or another app says the request is unsupported, use the QR code or copied UPI ID instead.
+            This opens the UPI app with only the UPI ID. If BHIM or another app still has trouble, use the QR code or copied UPI ID instead.
           </p>
           <p className="mt-4 text-sm text-sage/75">
             Selected service: <span className="font-semibold text-sage">{selectedService?.name}</span>

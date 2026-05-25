@@ -91,9 +91,9 @@ export function SiteSections() {
         <HeroSection />
         <AboutSection />
         <ServicesSection />
-        <FaqSection />
         <ContactSection />
         <FeedbackSection />
+        <FaqSection />
       </main>
       <Footer
         brandName={config.brandName}
