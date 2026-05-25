@@ -2,7 +2,7 @@
 
 import { insertRows } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Star } from "lucide-react";
 import { useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
@@ -11,12 +11,24 @@ const feedbackSchema = z.object({
   fullName: z.string().min(2, "Please enter your name."),
   email: z.string().email("Please enter a valid email."),
   consultationType: z.string().min(2, "Please mention the consultation or service."),
+  rating: z.coerce.number().min(1, "Please select a rating.").max(5, "Please select a rating."),
   feedback: z.string().min(10, "Please write a little feedback.")
 });
 
 type FeedbackValues = z.infer<typeof feedbackSchema>;
+type InsertedFeedbackRow = {
+  id?: number;
+  full_name?: string;
+  consultation_type?: string;
+  feedback_text?: string;
+  rating?: number;
+};
 
-export function FeedbackForm() {
+export function FeedbackForm({
+  onSubmitted
+}: {
+  onSubmitted?: (item: { id: string; name: string; service: string; quote: string; rating: number }) => void;
+}) {
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -26,6 +38,7 @@ export function FeedbackForm() {
       fullName: "",
       email: "",
       consultationType: "",
+      rating: 5,
       feedback: ""
     }
   });
@@ -35,14 +48,37 @@ export function FeedbackForm() {
     setStatus(null);
 
     try {
-      await insertRows("feedback", [
-        {
-          full_name: values.fullName,
-          email: values.email,
-          consultation_type: values.consultationType,
-          feedback_text: values.feedback
-        }
-      ]);
+      let insertedRows: InsertedFeedbackRow[] = [];
+
+      try {
+        insertedRows = await insertRows("feedback", [
+          {
+            full_name: values.fullName,
+            email: values.email,
+            consultation_type: values.consultationType,
+            feedback_text: values.feedback,
+            rating: values.rating
+          }
+        ]);
+      } catch {
+        insertedRows = await insertRows("feedback", [
+          {
+            full_name: values.fullName,
+            email: values.email,
+            consultation_type: values.consultationType,
+            feedback_text: values.feedback
+          }
+        ]);
+      }
+
+      const inserted = insertedRows[0];
+      onSubmitted?.({
+        id: String(inserted?.id ?? Date.now()),
+        name: inserted?.full_name || values.fullName,
+        service: inserted?.consultation_type || values.consultationType,
+        quote: inserted?.feedback_text || values.feedback,
+        rating: Number(inserted?.rating || values.rating || 5)
+      });
 
       form.reset();
       setStatus("Thank you. Your feedback has been submitted successfully.");
@@ -77,6 +113,30 @@ export function FeedbackForm() {
           className={inputClass}
         />
         <FieldError message={form.formState.errors.consultationType?.message} />
+
+        <label className="text-sm font-medium text-sage">
+          Rating <span className="text-ember">*</span>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[1, 2, 3, 4, 5].map((value) => {
+              const selected = form.watch("rating") === value;
+
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => form.setValue("rating", value, { shouldValidate: true, shouldDirty: true })}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
+                    selected ? "border-gold bg-gold/15 text-sage" : "border-sage/12 bg-white/70 text-sage/75"
+                  }`}
+                >
+                  <Star className={`h-4 w-4 ${selected ? "fill-gold text-gold" : "text-gold"}`} />
+                  {value}
+                </button>
+              );
+            })}
+          </div>
+        </label>
+        <FieldError message={form.formState.errors.rating?.message} />
 
         <label className="text-sm font-medium text-sage">
           Feedback <span className="text-ember">*</span>

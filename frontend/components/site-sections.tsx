@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { selectRows } from "@/lib/supabase";
 import { useSiteConfig } from "@/lib/use-site-config";
 import {
   CheckCircle2,
@@ -9,17 +10,75 @@ import {
   Instagram,
   Phone,
   Sparkles,
+  Star,
   Youtube
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { BookingForm } from "./booking-form";
 import { FeedbackForm } from "./feedback-form";
 import { Footer } from "./footer";
 import { Navbar } from "./navbar";
 import { SectionHeading } from "./section-heading";
 
+type FeedbackRow = {
+  id?: number;
+  full_name?: string;
+  consultation_type?: string;
+  feedback_text?: string;
+  rating?: number;
+};
+
+type FeedbackCardItem = {
+  id: string;
+  name: string;
+  service: string;
+  quote: string;
+  rating: number;
+};
+
 export function SiteSections() {
   const { config, ready, loading, error } = useSiteConfig();
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackCardItem[]>([]);
   const mainAstrologer = config.astrologers[0];
+
+  useEffect(() => {
+    let active = true;
+
+    const loadFeedback = async () => {
+      try {
+        const rows = await selectRows<FeedbackRow>("feedback");
+        if (!active) {
+          return;
+        }
+
+        setFeedbackItems(
+          rows
+            .filter((row) => row.feedback_text)
+            .map((row, index) => ({
+              id: String(row.id ?? index),
+              name: row.full_name || "Anonymous",
+              service: row.consultation_type || "Consultation",
+              quote: row.feedback_text || "",
+              rating: Math.min(5, Math.max(1, Number(row.rating || 5)))
+            }))
+            .reverse()
+            .slice(0, 6)
+        );
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setFeedbackItems([]);
+      }
+    };
+
+    void loadFeedback();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (!ready) {
     return <div className="min-h-screen bg-ivory" />;
@@ -224,17 +283,46 @@ export function SiteSections() {
   }
 
   function FeedbackSection() {
+    const visibleFeedback =
+      feedbackItems.length > 0
+        ? feedbackItems
+        : config.testimonials.map((item) => ({
+            id: item.id,
+            name: item.name,
+            service: "Client Feedback",
+            quote: item.quote,
+            rating: item.rating
+          }));
+
     return (
       <section id="feedback" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr]">
           <div>
             <SectionHeading
               eyebrow="Feedback"
-              title="Let clients share feedback after their consultation"
-              description="Instead of showing fixed automated feedback on the homepage, this section lets real users submit their own response after the service is complete."
+              title="Client feedback appears here after consultation"
+              description="Submitted feedback is shown in these cards so new visitors can read what other clients shared after their consultation or class."
             />
+            <div className="mt-8 grid gap-4">
+              {visibleFeedback.map((item) => (
+                <div key={item.id} className="rounded-[1.75rem] border border-sage/10 bg-white/80 p-5 shadow-glow">
+                  <p className="text-sm uppercase tracking-[0.2em] text-gold">{item.service}</p>
+                  <div className="mt-3 flex items-center gap-1 text-gold">
+                    {Array.from({ length: item.rating }).map((_, index) => (
+                      <Star key={`${item.id}-star-${index}`} className="h-4 w-4 fill-gold text-gold" />
+                    ))}
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-sage/85">"{item.quote}"</p>
+                  <p className="mt-4 font-display text-lg text-sage">{item.name}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <FeedbackForm />
+          <FeedbackForm
+            onSubmitted={(item) => {
+              setFeedbackItems((current) => [item, ...current].slice(0, 6));
+            }}
+          />
         </div>
       </section>
     );

@@ -10,6 +10,8 @@ import { z } from "zod";
 import type { ServiceItem } from "@/lib/site-config";
 
 const BOOKING_DRAFT_STORAGE_KEY = "astro-booking-draft";
+const PAYMENT_MERCHANT_NAME = "Arijit Talukdar";
+const PAYMENT_UPI_ID = "7584972080jio@jio";
 
 const createBookingSchema = (services: ServiceItem[]) =>
   z
@@ -78,15 +80,15 @@ type BookingFormValues = z.infer<ReturnType<typeof createBookingSchema>>;
 type BookingDraft = Omit<BookingFormValues, "paymentScreenshot">;
 
 function buildUpiLink(upiId: string, name: string, amount: number, serviceName: string) {
-  const params = new URLSearchParams({
-    pa: upiId,
-    pn: name,
-    am: String(amount),
-    cu: "INR",
-    tn: `${serviceName} consultation payment`
-  });
+  const params = [
+    `pa=${upiId}`,
+    `pn=${encodeURIComponent(name)}`,
+    `am=${encodeURIComponent(String(amount))}`,
+    "cu=INR",
+    `tn=${encodeURIComponent(`${serviceName} consultation payment`)}`
+  ];
 
-  return `upi://pay?${params.toString()}`;
+  return `upi://pay?${params.join("&")}`;
 }
 
 export function BookingForm({ config }: { config: SiteConfig }) {
@@ -95,6 +97,8 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const skipDraftSyncRef = useRef(false);
   const mainAstrologer = config.astrologers[0];
+  const paymentMerchantName = PAYMENT_MERCHANT_NAME;
+  const paymentUpiId = PAYMENT_UPI_ID;
   const bookingSchema = useMemo(() => createBookingSchema(config.services), [config.services]);
 
   const form = useForm<BookingFormValues>({
@@ -116,12 +120,13 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const selectedService = config.services.find((service) => service.id === selectedServiceId) ?? config.services[0];
   const requiresBirthDetails = selectedService?.type !== "class";
   const paymentScreenshot = form.watch("paymentScreenshot");
+  const selectedServiceAmount = selectedService?.price ?? 0;
 
   const upiLink = useMemo(() => {
-    return buildUpiLink(mainAstrologer.upiId, mainAstrologer.name, selectedService?.price ?? 0, selectedService?.name ?? "Consultation");
-  }, [mainAstrologer.name, mainAstrologer.upiId, selectedService?.name, selectedService?.price]);
-  const paymentActionUrl = selectedService?.paymentUrl?.trim() || upiLink;
-  const paymentActionLabel = selectedService?.paymentUrl?.trim() ? "Open Payment App (Optional)" : "Open UPI App (Optional)";
+    return buildUpiLink(paymentUpiId, paymentMerchantName, selectedServiceAmount, selectedService?.name ?? "Consultation");
+  }, [paymentMerchantName, paymentUpiId, selectedService?.name, selectedServiceAmount]);
+  const paymentActionUrl = upiLink;
+  const paymentActionLabel = "Open UPI App (Optional)";
 
   const qrSource = selectedService?.paymentQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
 
@@ -294,7 +299,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   });
 
   const copyUpiId = async () => {
-    await navigator.clipboard.writeText(mainAstrologer.upiId);
+    await navigator.clipboard.writeText(paymentUpiId);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };
@@ -321,9 +326,10 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           </p>
         </div>
         <div className="rounded-3xl border border-gold/25 bg-gold/10 p-4 text-sm text-sage">
-          <p className="font-semibold">UPI ID</p>
+          <p className="font-semibold">Payment Details</p>
+          <p className="mt-2 text-sage/75">Merchant: {paymentMerchantName}</p>
           <div className="mt-2 flex items-center gap-3">
-            <span>{mainAstrologer.upiId}</span>
+            <span>{paymentUpiId}</span>
             <button
               type="button"
               onClick={copyUpiId}
@@ -379,8 +385,9 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <div className="mt-4 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4 text-sm text-sage">
             <p className="font-semibold">Preferred payment method</p>
             <p className="mt-2 text-sage/75">Scan the QR code above or copy the UPI ID below and pay the exact amount manually in BHIM, PhonePe, GPay, or Paytm.</p>
+            <p className="mt-2 text-sage/75">Merchant name: {paymentMerchantName}</p>
             <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-sage/10 bg-ivory/70 px-4 py-3">
-              <span className="break-all font-medium">{mainAstrologer.upiId}</span>
+              <span className="break-all font-medium">{paymentUpiId}</span>
               <button
                 type="button"
                 onClick={copyUpiId}

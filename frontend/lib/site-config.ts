@@ -46,6 +46,7 @@ export type TestimonialItem = {
   id: string;
   name: string;
   quote: string;
+  rating: number;
 };
 
 export type SiteConfig = {
@@ -69,9 +70,9 @@ export const defaultSiteConfig: SiteConfig = {
   astrologers: [
     {
       id: "astro-1",
-      name: "Acharya Anaya Dev",
-      title: "Vedic Astrologer, Numerologist, and Spiritual Mentor",
-      bio: "Offers practical astrology, numerology, and spiritual classes with a warm and personal approach.",
+      name: "Arijit Talukdar",
+      title: "Astrologer and Spiritual Guide",
+      bio: "Offers practical astrology guidance, spiritual support, and a simple personal booking experience.",
       experience: "12+ years of experience in consultations and teaching",
       phone: "+91 98765 43210",
       whatsapp: "919876543210",
@@ -152,17 +153,20 @@ export const defaultSiteConfig: SiteConfig = {
     {
       id: "t-1",
       name: "Riya",
-      quote: "Very clear guidance and a peaceful consultation experience."
+      quote: "Very clear guidance and a peaceful consultation experience.",
+      rating: 5
     },
     {
       id: "t-2",
       name: "Karan",
-      quote: "The class structure is simple to follow and very practical."
+      quote: "The class structure is simple to follow and very practical.",
+      rating: 5
     },
     {
       id: "t-3",
       name: "Nisha",
-      quote: "Booking through UPI and WhatsApp felt easy and personal."
+      quote: "Booking through UPI and WhatsApp felt easy and personal.",
+      rating: 4
     }
   ]
 };
