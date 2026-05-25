@@ -13,7 +13,7 @@ import {
   Star,
   Youtube
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { BookingForm } from "./booking-form";
 import { FeedbackForm } from "./feedback-form";
 import { Footer } from "./footer";
@@ -84,6 +84,12 @@ export function SiteSections() {
   if (!ready) {
     return <div className="min-h-screen bg-ivory" />;
   }
+
+  const toggleFeedbackView = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setShowAllFeedback((current) => !current);
+  };
 
   return (
     <>
@@ -319,7 +325,7 @@ export function SiteSections() {
                 {feedbackItems.length > 3 ? (
                   <button
                     type="button"
-                    onClick={() => setShowAllFeedback((current) => !current)}
+                    onClick={toggleFeedbackView}
                     className="mt-5 inline-flex rounded-full border border-sage/15 bg-white px-5 py-3 text-sm font-semibold text-sage"
                   >
                     {showAllFeedback ? "Show latest feedback" : "View all feedback"}
