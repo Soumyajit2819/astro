@@ -11,6 +11,7 @@ import type { ServiceItem } from "@/lib/site-config";
 
 const BOOKING_DRAFT_STORAGE_KEY = "astro-booking-draft";
 const PAYMENT_MERCHANT_NAME = "Arijit Talukdar";
+const PAYMENT_UPI_LABEL = "ArijitTalukdar";
 const PAYMENT_UPI_ID = "7584972080jio@jio";
 
 const createBookingSchema = (services: ServiceItem[]) =>
@@ -82,8 +83,10 @@ type BookingDraft = Omit<BookingFormValues, "paymentScreenshot">;
 function buildUpiLink(upiId: string, name: string, amount: number, serviceName: string) {
   const params = [
     `pa=${upiId}`,
+    `pn=${PAYMENT_UPI_LABEL}`,
     `am=${encodeURIComponent(String(amount))}`,
-    "cu=INR"
+    "cu=INR",
+    `tn=${encodeURIComponent(serviceName)}`
   ];
 
   return `upi://pay?${params.join("&")}`;
