@@ -467,9 +467,10 @@ export function AdminShell() {
                       name: "New Service",
                       price: 1000,
                       description: "",
-                      type: "consultation",
+                      type: "consultation" as const,
                       paymentQrUrl: "",
-                      paymentUrl: ""
+                      paymentUrl: "",
+                      discountPercent: 0
                     }
                   ]
                 })
