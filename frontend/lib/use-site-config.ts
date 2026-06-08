@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { defaultSiteConfig, type AstrologerItem, type FaqItem, type ScheduleItem, type ServiceItem, type SiteConfig } from "./site-config";
+import { defaultSiteConfig, type AstrologerItem, type CouponItem, type FaqItem, type ScheduleItem, type ServiceItem, type SiteConfig } from "./site-config";
 import { deleteAllRows, insertRows, selectRows } from "./supabase";
 
 type SaveResult = {
@@ -32,6 +32,15 @@ type ServiceRow = {
   type?: string;
   payment_qr_url?: string;
   payment_url?: string;
+  discount_percent?: number | string;
+};
+
+type CouponRow = {
+  id?: number;
+  code?: string;
+  discount_percent?: number | string;
+  active?: boolean;
+  description?: string;
 };
 
 type ScheduleRow = {
@@ -94,7 +103,18 @@ function mapServices(rows: ServiceRow[]): ServiceItem[] {
     price: Number(row.price || 0),
     type: row.type === "class" ? "class" : "consultation",
     paymentQrUrl: row.payment_qr_url || "",
-    paymentUrl: row.payment_url || ""
+    paymentUrl: row.payment_url || "",
+    discountPercent: Number(row.discount_percent || 0)
+  }));
+}
+
+function mapCoupons(rows: CouponRow[]): CouponItem[] {
+  return rows.map((row, index) => ({
+    id: `coupon-${index + 1}`,
+    code: (row.code || "").toUpperCase(),
+    discountPercent: Number(row.discount_percent || 0),
+    active: row.active !== false,
+    description: row.description || ""
   }));
 }
 
@@ -133,13 +153,15 @@ function buildConfig(data: {
   services: ServiceRow[];
   schedule: ScheduleRow[];
   faqs: FaqRow[];
+  coupons: CouponRow[];
 }): SiteConfig {
   return {
     ...defaultSiteConfig,
     astrologers: mapAstrologers(data.astrologers),
     services: mapServices(data.services),
     schedule: mapSchedule(data.schedule),
-    faqs: mapFaq(data.faqs)
+    faqs: mapFaq(data.faqs),
+    coupons: mapCoupons(data.coupons)
   };
 }
 
@@ -186,7 +208,8 @@ function serviceRowsExtended(services: ServiceItem[]) {
     price: item.price,
     type: item.type,
     payment_qr_url: item.paymentQrUrl,
-    payment_url: item.paymentUrl
+    payment_url: item.paymentUrl,
+    discount_percent: item.discountPercent ?? 0
   }));
 }
 
@@ -201,11 +224,12 @@ export function useSiteConfig() {
     setError(null);
 
     try {
-      const [astrologers, services, schedule, faqs] = await Promise.all([
+      const [astrologers, services, schedule, faqs, coupons] = await Promise.all([
         selectRows<AstrologerRow>("astrologers"),
         selectRows<ServiceRow>("services"),
         selectRows<ScheduleRow>("schedule"),
-        selectRows<FaqRow>("faq")
+        selectRows<FaqRow>("faq"),
+        selectRows<CouponRow>("coupons").catch(() => [] as CouponRow[])
       ]);
 
       setConfig(
@@ -213,7 +237,8 @@ export function useSiteConfig() {
           astrologers,
           services,
           schedule,
-          faqs
+          faqs,
+          coupons
         })
       );
     } catch (loadError) {
@@ -282,6 +307,24 @@ export function useSiteConfig() {
             }))
           )
         ]);
+
+        // Save coupons: delete all existing rows then re-insert
+        try {
+          await deleteAllRows("coupons", "code");
+          if (nextConfig.coupons.length > 0) {
+            await insertRows(
+              "coupons",
+              nextConfig.coupons.map((item) => ({
+                code: item.code.toUpperCase(),
+                discount_percent: item.discountPercent,
+                active: item.active,
+                description: item.description
+              }))
+            );
+          }
+        } catch {
+          // coupons table may not exist yet — non-fatal
+        }
 
         setConfig(nextConfig);
         return { ok: true, warning };

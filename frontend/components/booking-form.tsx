@@ -3,11 +3,11 @@
 import type { SiteConfig } from "@/lib/site-config";
 import { insertRows, uploadPublicFile } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck, Upload } from "lucide-react";
+import { CheckCircle2, Copy, MessageCircle, QrCode, ShieldCheck, Tag, Upload, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
-import type { ServiceItem } from "@/lib/site-config";
+import type { CouponItem, ServiceItem } from "@/lib/site-config";
 
 const BOOKING_DRAFT_STORAGE_KEY = "astro-booking-draft";
 const PAYMENT_MERCHANT_NAME = "Arijit Talukdar";
@@ -87,6 +87,9 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponItem | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const skipDraftSyncRef = useRef(false);
   const mainAstrologer = config.astrologers[0];
   const paymentMerchantName = PAYMENT_MERCHANT_NAME;
@@ -112,10 +115,24 @@ export function BookingForm({ config }: { config: SiteConfig }) {
   const selectedService = config.services.find((service) => service.id === selectedServiceId) ?? config.services[0];
   const requiresBirthDetails = selectedService?.type !== "class";
   const paymentScreenshot = form.watch("paymentScreenshot");
-  const selectedServiceAmount = selectedService?.price ?? 0;
+
+  // Calculate price with service-level discount then optional coupon discount
+  const basePrice = selectedService?.price ?? 0;
+  const serviceDiscountPct = selectedService?.discountPercent ?? 0;
+  const priceAfterServiceDiscount = serviceDiscountPct > 0
+    ? Math.round(basePrice * (1 - serviceDiscountPct / 100))
+    : basePrice;
+  const couponDiscountPct = appliedCoupon ? appliedCoupon.discountPercent : 0;
+  const finalPrice = couponDiscountPct > 0
+    ? Math.round(priceAfterServiceDiscount * (1 - couponDiscountPct / 100))
+    : priceAfterServiceDiscount;
+  const totalSavings = basePrice - finalPrice;
+  const selectedServiceAmount = finalPrice;
+
   const upiLink = useMemo(() => {
-    return buildUpiLink(paymentUpiId, selectedServiceAmount);
-  }, [paymentUpiId, selectedServiceAmount]);
+    return buildUpiLink(paymentUpiId, finalPrice);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentUpiId, finalPrice]);
   const paymentActionUrl = upiLink;
   const paymentActionLabel = "Open UPI App";
 
@@ -239,7 +256,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           email: values.email,
           phone_number: values.phoneNumber,
           service_name: service.name,
-          amount: service.price,
+          amount: finalPrice,
           payment_screenshot_url: screenshotUrl,
           notes: values.message || "",
           status: "pending"
@@ -249,7 +266,9 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       const details = [
         `Hello ${mainAstrologer.name},`,
         `Payment done confirmation for: ${service.name}`,
-        `Amount paid: Rs. ${service.price}`,
+        `Amount paid: Rs. ${finalPrice}`,
+        ...(totalSavings > 0 ? [`Original price: Rs. ${basePrice} | Savings: Rs. ${totalSavings}`] : []),
+        ...(appliedCoupon ? [`Coupon applied: ${appliedCoupon.code} (${appliedCoupon.discountPercent}% extra off)`] : []),
         "Payment Screenshot Link:",
         screenshotUrl,
         `Name: ${values.fullName}`,
@@ -268,6 +287,8 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${whatsappText}`;
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
       clearBookingDraft();
+      setAppliedCoupon(null);
+      setCouponCode("");
       form.reset({
         fullName: "",
         phoneNumber: "",
@@ -281,7 +302,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
       });
 
       setConfirmation(
-        `Payment proof uploaded for Rs. ${service.price}. If WhatsApp does not show the link properly, use the buttons below to open or copy the screenshot link manually.`
+        `Payment proof uploaded for Rs. ${finalPrice}${totalSavings > 0 ? ` (saved Rs. ${totalSavings})` : ""}. If WhatsApp does not show the link properly, use the buttons below to open or copy the screenshot link manually.`
       );
     } catch (uploadError) {
       setProofUrl(null);
@@ -293,6 +314,35 @@ export function BookingForm({ config }: { config: SiteConfig }) {
     await navigator.clipboard.writeText(paymentUpiId);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  const applyCoupon = () => {
+    setCouponError(null);
+    const trimmedCode = couponCode.trim().toUpperCase();
+    if (!trimmedCode) {
+      setCouponError("Enter a coupon code first.");
+      return;
+    }
+
+    const match = (config.coupons ?? []).find(
+      (c) => c.code.toUpperCase() === trimmedCode && c.active
+    );
+
+    if (!match) {
+      setAppliedCoupon(null);
+      setCouponError("Invalid or expired coupon code.");
+      return;
+    }
+
+    setAppliedCoupon(match);
+    form.setValue("paymentCompleted", false, { shouldValidate: false });
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError(null);
+    form.setValue("paymentCompleted", false, { shouldValidate: false });
   };
 
   const copyProofLink = async () => {
@@ -355,6 +405,9 @@ export function BookingForm({ config }: { config: SiteConfig }) {
                   onChange: () => {
                     form.setValue("paymentCompleted", false, { shouldValidate: true });
                     setConfirmation(null);
+                    setAppliedCoupon(null);
+                    setCouponCode("");
+                    setCouponError(null);
                   }
                 })}
               >
@@ -371,7 +424,7 @@ export function BookingForm({ config }: { config: SiteConfig }) {
               <p className="text-sm font-semibold uppercase tracking-[0.2em]">Dynamic Payment QR <span className="text-ember">*</span></p>
             </div>
             <div className="mt-4 rounded-[1.5rem] bg-white p-4">
-            <img src={qrSource} alt={`Payment QR for Rs. ${selectedService?.price ?? 0}`} className="mx-auto h-56 w-56 rounded-2xl object-contain" />
+            <img src={qrSource} alt={`Payment QR for Rs. ${finalPrice}`} className="mx-auto h-56 w-56 rounded-2xl object-contain" />
           </div>
           <div className="mt-4 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4 text-sm text-sage">
             <p className="font-semibold">Preferred payment method</p>
@@ -406,9 +459,69 @@ export function BookingForm({ config }: { config: SiteConfig }) {
           <p className="mt-4 text-sm text-sage/75">
             Selected service: <span className="font-semibold text-sage">{selectedService?.name}</span>
           </p>
-          <p className="mt-1 font-display text-3xl text-sage">Rs. {selectedService?.price ?? 0}</p>
-          <p className="mt-2 text-sm text-sage/75">{selectedService?.description}</p>
-          <p className="mt-3 text-xs font-medium text-ember">Proceed only after real payment. Screenshot proof is required.</p>
+          <p className="mt-4 text-sm text-sage/75">
+            Selected service: <span className="font-semibold text-sage">{selectedService?.name}</span>
+          </p>
+
+          {/* Price breakdown with discounts */}
+          {totalSavings > 0 ? (
+            <div className="mt-2">
+              <p className="text-sm text-sage/60 line-through">Rs. {basePrice}</p>
+              <p className="font-display text-3xl text-sage">Rs. {finalPrice}</p>
+              <p className="mt-1 text-sm font-medium text-emerald-600">You save Rs. {totalSavings}
+                {serviceDiscountPct > 0 && ` (${serviceDiscountPct}% service discount`}
+                {serviceDiscountPct > 0 && couponDiscountPct > 0 && ` + ${couponDiscountPct}% coupon`}
+                {serviceDiscountPct > 0 && `)` }
+                {serviceDiscountPct === 0 && couponDiscountPct > 0 && ` (${couponDiscountPct}% coupon)`}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 font-display text-3xl text-sage">Rs. {finalPrice}</p>
+          )}
+
+          {/* Coupon input */}
+          <div className="mt-4 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4">
+            <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-sage">
+              <Tag className="h-4 w-4 text-gold" />
+              Have a coupon code?
+            </p>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-emerald-700">{appliedCoupon.code} applied — {appliedCoupon.discountPercent}% extra off</p>
+                  {appliedCoupon.description ? <p className="text-xs text-emerald-600">{appliedCoupon.description}</p> : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={removeCoupon}
+                  className="inline-flex items-center gap-1 rounded-full border border-ember/30 bg-white px-3 py-1 text-xs font-medium text-ember"
+                >
+                  <XCircle className="h-3.5 w-3.5" /> Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                  placeholder="Enter coupon code"
+                  className="flex-1 rounded-2xl border border-sage/12 bg-white px-4 py-2 text-sm text-sage outline-none placeholder:text-sage/40 focus:border-gold"
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  className="inline-flex items-center gap-1 rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+            {couponError ? <p className="mt-2 text-xs text-ember">{couponError}</p> : null}
+          </div>
+
+          <p className="mt-3 text-sm text-sage/75">{selectedService?.description}</p>
+          <p className="mt-2 text-xs font-medium text-ember">Pay exactly Rs. {finalPrice}. Screenshot proof is required.</p>
         </div>
         </div>
 
@@ -482,7 +595,9 @@ export function BookingForm({ config }: { config: SiteConfig }) {
               {...form.register("paymentCompleted")}
             />
             <span>
-              I have completed the payment of <strong>Rs. {selectedService?.price ?? 0}</strong>, uploaded the screenshot proof, and I understand that only after this step will my details be sent on WhatsApp to the astrologer.
+              I have completed the payment of <strong>Rs. {finalPrice}</strong>
+              {totalSavings > 0 && ` (original Rs. ${basePrice}, you saved Rs. ${totalSavings})`},
+              uploaded the screenshot proof, and I understand that only after this step will my details be sent on WhatsApp to the astrologer.
             </span>
           </label>
           <FieldError message={form.formState.errors.paymentCompleted?.message} />

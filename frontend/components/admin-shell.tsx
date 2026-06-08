@@ -1,10 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { AstrologerItem, SiteConfig } from "@/lib/site-config";
+import type { AstrologerItem, CouponItem, SiteConfig } from "@/lib/site-config";
 import { selectRows, updateRow, uploadPublicFile } from "@/lib/supabase";
 import { useSiteConfig } from "@/lib/use-site-config";
-import { AlertCircle, CheckCircle2, ExternalLink, LogOut, Plus, RefreshCcw, RotateCcw, Save, Upload, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, LogOut, Percent, Plus, RefreshCcw, RotateCcw, Save, Tag, Upload, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -129,6 +129,19 @@ export function AdminShell() {
     setDraft({
       ...workingConfig,
       faqs: workingConfig.faqs.filter((_, itemIndex) => itemIndex !== index)
+    });
+  };
+
+  const updateCoupon = (index: number, nextItem: CouponItem) => {
+    const next = [...(workingConfig.coupons ?? [])];
+    next[index] = nextItem;
+    setDraft({ ...workingConfig, coupons: next });
+  };
+
+  const removeCoupon = (index: number) => {
+    setDraft({
+      ...workingConfig,
+      coupons: (workingConfig.coupons ?? []).filter((_, itemIndex) => itemIndex !== index)
     });
   };
 
@@ -475,6 +488,19 @@ export function AdminShell() {
                     onChange={(value) => updateService(index, { ...item, price: Number(value) || 0 })}
                   />
                   <EditorInput
+                    label="Discount % (0 = no discount, 10 = 10% off)"
+                    value={String(item.discountPercent ?? 0)}
+                    onChange={(value) => {
+                      const pct = Math.min(100, Math.max(0, Number(value) || 0));
+                      updateService(index, { ...item, discountPercent: pct });
+                    }}
+                  />
+                  {(item.discountPercent ?? 0) > 0 && (
+                    <p className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-2 text-sm text-sage">
+                      Effective price: <strong>Rs. {Math.round(item.price * (1 - (item.discountPercent ?? 0) / 100))}</strong> (after {item.discountPercent}% discount)
+                    </p>
+                  )}
+                  <EditorInput
                     label="Payment QR URL"
                     value={item.paymentQrUrl}
                     onChange={(value) => updateService(index, { ...item, paymentQrUrl: value })}
@@ -535,6 +561,63 @@ export function AdminShell() {
                 </div>
               )}
             />
+
+            <CollectionEditor
+              title="Coupons & Extra Discounts"
+              description="Create coupon codes users can enter at checkout for an additional discount on top of any service-level discount. Codes are case-insensitive. Saved to the coupons table."
+              items={workingConfig.coupons ?? []}
+              onAdd={() =>
+                setDraft({
+                  ...workingConfig,
+                  coupons: [
+                    ...(workingConfig.coupons ?? []),
+                    {
+                      id: `coupon-${Date.now()}`,
+                      code: "NEWCODE",
+                      discountPercent: 10,
+                      active: true,
+                      description: ""
+                    }
+                  ]
+                })
+              }
+              renderItem={(item, index) => (
+                <div className="grid gap-3 rounded-3xl border border-sage/10 bg-ivory/60 p-4">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-gold" />
+                    <span className="text-sm font-semibold text-sage">Coupon Code</span>
+                  </div>
+                  <EditorInput
+                    label="Code (uppercase, no spaces)"
+                    value={item.code}
+                    onChange={(value) => updateCoupon(index, { ...item, code: value.toUpperCase().replace(/\s+/g, "") })}
+                  />
+                  <EditorInput
+                    label="Extra Discount % (e.g. 15 for 15% additional off)"
+                    value={String(item.discountPercent)}
+                    onChange={(value) => {
+                      const pct = Math.min(100, Math.max(0, Number(value) || 0));
+                      updateCoupon(index, { ...item, discountPercent: pct });
+                    }}
+                  />
+                  <EditorInput
+                    label="Description (shown to user on valid code)"
+                    value={item.description}
+                    onChange={(value) => updateCoupon(index, { ...item, description: value })}
+                  />
+                  <label className="flex cursor-pointer items-center gap-3 text-sm font-medium text-sage">
+                    <input
+                      type="checkbox"
+                      checked={item.active}
+                      onChange={(e) => updateCoupon(index, { ...item, active: e.target.checked })}
+                      className="h-4 w-4 rounded border-sage/20"
+                    />
+                    Active (users can apply this code)
+                  </label>
+                  <DeleteButton onClick={() => removeCoupon(index)} />
+                </div>
+              )}
+            />
           </div>
         </div>
 
@@ -554,6 +637,9 @@ export function AdminShell() {
           </p>
           <p className="mt-2">
             To review uploaded payment screenshots in admin, create a <code>payment_proofs</code> table using the new SQL setup file.
+          </p>
+          <p className="mt-2">
+            To enable discount codes and coupon codes, create a <code>coupons</code> table and add <code>discount_percent</code> to the <code>services</code> table using the SQL migration in <code>docs/supabase-coupons-setup.sql</code>.
           </p>
         </div>
       </div>

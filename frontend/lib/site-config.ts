@@ -22,6 +22,15 @@ export type ServiceItem = {
   type: "consultation" | "class";
   paymentQrUrl: string;
   paymentUrl: string;
+  discountPercent: number; // 0 = no discount, 10 = 10% off
+};
+
+export type CouponItem = {
+  id: string;
+  code: string;
+  discountPercent: number; // e.g. 15 for 15% extra off
+  active: boolean;
+  description: string;
 };
 
 export type ScheduleItem = {
@@ -59,6 +68,7 @@ export type SiteConfig = {
   schedule: ScheduleItem[];
   faqs: FaqItem[];
   testimonials: TestimonialItem[];
+  coupons: CouponItem[];
 };
 
 export const defaultSiteConfig: SiteConfig = {
@@ -92,7 +102,8 @@ export const defaultSiteConfig: SiteConfig = {
       description: "Career direction, job timing, and personal remedies.",
       type: "consultation",
       paymentQrUrl: "",
-      paymentUrl: ""
+      paymentUrl: "",
+      discountPercent: 0
     },
     {
       id: "service-2",
@@ -101,7 +112,8 @@ export const defaultSiteConfig: SiteConfig = {
       description: "Marriage timing, compatibility, and relationship guidance.",
       type: "consultation",
       paymentQrUrl: "",
-      paymentUrl: ""
+      paymentUrl: "",
+      discountPercent: 0
     },
     {
       id: "service-3",
@@ -110,7 +122,8 @@ export const defaultSiteConfig: SiteConfig = {
       description: "Beginner-friendly weekly class covering horoscope basics.",
       type: "class",
       paymentQrUrl: "",
-      paymentUrl: ""
+      paymentUrl: "",
+      discountPercent: 0
     }
   ],
   schedule: [
@@ -149,5 +162,6 @@ export const defaultSiteConfig: SiteConfig = {
       answer: "Select the class, complete the UPI payment, send the screenshot, and the astrologer will confirm your seat and class details."
     }
   ],
-  testimonials: []
+  testimonials: [],
+  coupons: []
 };

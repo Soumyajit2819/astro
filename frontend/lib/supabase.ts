@@ -66,6 +66,18 @@ export async function updateRow<T>(table: string, filterColumn: string, filterVa
   return handleResponse<T[]>(response);
 }
 
+export async function deleteRowsWhere(table: string, filterColumn: string, filterValue: string | number) {
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/${table}?${filterColumn}=eq.${encodeURIComponent(String(filterValue))}`,
+    { method: "DELETE", headers: getHeaders() }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const text = await response.text();
+    throw new Error(text || `Failed to delete from ${table}.`);
+  }
+}
+
 export async function uploadPublicFile(bucket: string, path: string, file: File) {
   const normalizedBucket = bucket.trim();
   const normalizedPath = path.trim();
