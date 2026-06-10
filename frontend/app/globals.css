@@ -10,81 +10,73 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ── BODY — space image fixed background + cream overlay ── */
 body {
   min-height: 100vh;
-  background-image: radial-gradient(circle at top, rgba(200, 155, 60, 0.18), transparent 28%),
-    radial-gradient(circle at 0% 25%, rgba(82, 98, 79, 0.08), transparent 20%),
-    linear-gradient(165deg, #fcf8ef 0%, #f7f1e3 48%, #efe6d1 100%);
   color: #394436;
+  position: relative;
 }
 
+/* Layer 1: the space image, fixed, covers everything */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 18%, rgba(255, 244, 214, 0.7) 0, transparent 18%),
-    radial-gradient(circle at 80% 14%, rgba(200, 155, 60, 0.12) 0, transparent 24%),
-    radial-gradient(circle at 52% 78%, rgba(82, 98, 79, 0.08) 0, transparent 24%);
-  opacity: 0.85;
-  z-index: -2;
+  z-index: -3;
+  background-image: url("/space-bg.png");
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 
+/* Layer 2: cream wash so the site keeps its light theme
+   and all text/cards remain fully readable.
+   Opacity 0.88 = strong cream tint, image just barely visible in margins */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(circle at 12% 24%, rgba(255, 255, 255, 0.75) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 34% 11%, rgba(200, 155, 60, 0.5) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 61% 29%, rgba(255, 255, 255, 0.6) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 85% 18%, rgba(200, 155, 60, 0.42) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 74% 62%, rgba(255, 255, 255, 0.58) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 21% 72%, rgba(200, 155, 60, 0.36) 0 1px, transparent 1.5px);
-  z-index: -1;
+  z-index: -2;
+  background: linear-gradient(
+    165deg,
+    rgba(252,248,239,0.90) 0%,
+    rgba(247,241,227,0.88) 48%,
+    rgba(239,230,209,0.90) 100%
+  );
 }
 
-/* sections must NOT create a stacking context — use z-index:auto */
+/* sections must NOT create a stacking context */
 section {
   position: relative;
   z-index: auto;
 }
+section::before { content: none; }
 
-/* Remove the section::before pseudo overlay — it was accidentally
-   painting over the planet scene at z-index 0 */
-section::before {
-  content: none;
-}
-
-/* ============================================================
-   PLANET ANIMATIONS
-   Rules:
-   • All planets live in the EMPTY background margin areas
-   • Never behind text columns or image cards
-   • Colours are 30–40% deeper than the cream bg so they read clearly
-   • 3D perspective tilt on orbits — looks like a real orrery
-   • No pointer events — completely decorative
-   ============================================================ */
+/* ================================================================
+   PLANET SCENE
+   z-index stack:
+     -3  space-bg image
+     -2  cream overlay
+     -1  (unused)
+      1  planet animations  ← visible in empty margins
+      2  main / nav / footer (all content — always on top)
+   ================================================================ */
 
 .planet-scene {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  /* sits above body gradients, below all page content */
   z-index: 1;
   overflow: hidden;
 }
 
-/* All page content sits above the planet scene */
 main, nav, footer, header {
   position: relative;
   z-index: 2;
 }
 
-/* ── ORRERY — top-right corner, orbits spill into margin ─── */
-/* Anchor point is off-screen top-right so only partial rings show */
+/* ── ORRERY — top-right corner ─────────────────────────────
+   Anchor off-screen so rings gracefully spill into viewport  */
 .solar-system {
   position: absolute;
   top: -80px;
@@ -92,8 +84,7 @@ main, nav, footer, header {
   width: 0;
   height: 0;
   transform-style: preserve-3d;
-  perspective: 1000px;
-  perspective-origin: 50% 50%;
+  perspective: 1200px;
 }
 
 .orbit {
@@ -105,258 +96,268 @@ main, nav, footer, header {
   animation: orbit-spin linear infinite;
 }
 
-/* Sizes — large enough to fill corner decoratively */
-.orbit-1 { width:160px;  height:160px;  margin:-80px;  animation-duration:18s;  border:1.5px solid rgba(100,68,18,0.45); }
-.orbit-2 { width:280px;  height:280px;  margin:-140px; animation-duration:30s;  border:1.5px solid rgba(100,68,18,0.35); animation-direction:reverse; }
-.orbit-3 { width:420px;  height:420px;  margin:-210px; animation-duration:48s;  border:1px solid rgba(100,68,18,0.25); }
-.orbit-4 { width:580px;  height:580px;  margin:-290px; animation-duration:70s;  border:1px solid rgba(100,68,18,0.16); animation-direction:reverse; }
-.orbit-5 { width:760px;  height:760px;  margin:-380px; animation-duration:100s; border:1px solid rgba(100,68,18,0.09); }
+.orbit-1 { width:180px;  height:180px;  margin:-90px;  animation-duration:16s;  border:1.5px solid rgba(80,48,10,0.55); }
+.orbit-2 { width:310px;  height:310px;  margin:-155px; animation-duration:28s;  border:1.5px solid rgba(80,48,10,0.42); animation-direction:reverse; }
+.orbit-3 { width:460px;  height:460px;  margin:-230px; animation-duration:44s;  border:1px   solid rgba(80,48,10,0.30); }
+.orbit-4 { width:630px;  height:630px;  margin:-315px; animation-duration:65s;  border:1px   solid rgba(80,48,10,0.18); animation-direction:reverse; }
+.orbit-5 { width:820px;  height:820px;  margin:-410px; animation-duration:92s;  border:1px   solid rgba(80,48,10,0.10); }
 
 @keyframes orbit-spin {
-  from { transform: rotateX(70deg) rotateY(6deg) rotateZ(0deg); }
-  to   { transform: rotateX(70deg) rotateY(6deg) rotateZ(360deg); }
+  from { transform: rotateX(72deg) rotateY(8deg) rotateZ(0deg); }
+  to   { transform: rotateX(72deg) rotateY(8deg) rotateZ(360deg); }
 }
 
-/* Planet bead — top-center of each ring, counter-rotated upright */
+/* Planet bead rides the ring, counter-rotated to stay upright */
 .planet {
   position: absolute;
   border-radius: 50%;
   top: 0; left: 50%;
-  transform: translateX(-50%) translateY(-50%) rotateX(-70deg);
+  transform: translateX(-50%) translateY(-50%) rotateX(-72deg);
 }
 
-/* Sun — deep orange-gold, unmistakably visible */
+/* Sun — deep orange */
 .planet-sun {
-  width: 22px; height: 22px;
-  background: radial-gradient(circle at 35% 32%, #f0a500, #c06800 50%, #7a3c00);
-  box-shadow: 0 0 14px rgba(192,104,0,0.60), 0 0 32px rgba(192,104,0,0.25);
+  width: 24px; height: 24px;
+  background: radial-gradient(circle at 35% 30%, #ffb300, #c05800 50%, #7a2e00);
+  box-shadow: 0 0 16px rgba(192,88,0,0.70), 0 0 36px rgba(192,88,0,0.30);
   animation: pulse-glow 4s ease-in-out infinite;
-  opacity: 0.92;
 }
-/* Mercury — dark steel grey */
+/* Mercury — dark slate */
 .planet-mercury {
-  width: 7px; height: 7px;
-  background: radial-gradient(circle at 38% 35%, #888078, #504840);
-  opacity: 0.85;
+  width: 8px; height: 8px;
+  background: radial-gradient(circle at 38% 35%, #706860, #3e3430);
 }
-/* Venus — deep burnt amber */
+/* Venus — deep burnt ochre */
 .planet-venus {
-  width: 11px; height: 11px;
-  background: radial-gradient(circle at 35% 32%, #d4841a, #8c4e00 60%, #5a3000);
-  box-shadow: 0 0 8px rgba(140,78,0,0.45);
-  opacity: 0.88;
+  width: 13px; height: 13px;
+  background: radial-gradient(circle at 35% 30%, #c87820, #7a4000 60%, #4a2200);
+  box-shadow: 0 0 8px rgba(122,64,0,0.50);
 }
-/* Mars — deep rust red */
+/* Mars — rust red */
 .planet-mars {
-  width: 9px; height: 9px;
-  background: radial-gradient(circle at 35% 32%, #c04820, #841800 60%, #500c00);
-  box-shadow: 0 0 8px rgba(132,24,0,0.45);
-  opacity: 0.88;
+  width: 10px; height: 10px;
+  background: radial-gradient(circle at 35% 30%, #c03818, #7a1000 60%, #480800);
+  box-shadow: 0 0 8px rgba(122,16,0,0.50);
 }
-/* Jupiter — dark banded brown-orange, clearly readable */
+/* Jupiter bead — dark banded */
 .planet-jupiter {
-  width: 20px; height: 20px;
+  width: 22px; height: 22px;
   background:
-    radial-gradient(ellipse at 35% 30%, rgba(220,160,60,0.5), transparent 55%),
-    repeating-linear-gradient(
-      180deg,
-      #7a4a10 0px, #7a4a10 3px,
-      #a86020 3px, #a86020 6px
-    );
+    radial-gradient(ellipse at 35% 28%, rgba(200,130,40,0.55), transparent 55%),
+    repeating-linear-gradient(180deg,
+      #6a3808 0px, #6a3808 3px,
+      #9a5418 3px, #9a5418 6px);
   border-radius: 50%;
-  box-shadow: 0 0 12px rgba(122,74,16,0.50);
-  opacity: 0.90;
+  box-shadow: 0 0 12px rgba(106,56,8,0.55);
 }
 
 @keyframes pulse-glow {
-  0%,100% { box-shadow: 0 0 14px rgba(192,104,0,0.60), 0 0 32px rgba(192,104,0,0.25); }
-  50%      { box-shadow: 0 0 22px rgba(192,104,0,0.80), 0 0 50px rgba(192,104,0,0.35); }
+  0%,100% { box-shadow: 0 0 16px rgba(192,88,0,0.70), 0 0 36px rgba(192,88,0,0.30); }
+  50%      { box-shadow: 0 0 26px rgba(192,88,0,0.90), 0 0 56px rgba(192,88,0,0.45); }
 }
 
-/* ── BIG JUPITER — floats in right-side background behind hero ─
-   Positioned in the empty right margin of the viewport.
-   Slow 3D rotation so it looks dimensional.
-   z-index stays at 0 — cards (z-index 1) always on top.        */
+/* ── BIG JUPITER — right margin, behind hero content ────────
+   Uses CSS 3D transform for the spin illusion.
+   Positioned at right:2% so it lives in the viewport margin,
+   never under the max-w-7xl content columns.                  */
 .bg-jupiter {
   position: absolute;
-  top: 12%;
-  right: 2%;
-  width: 110px;
-  height: 110px;
+  top: 10%;
+  right: 1.5%;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  /* Dark banded brown — clearly visible on cream */
   background:
-    radial-gradient(ellipse at 38% 30%, rgba(210,140,40,0.55), transparent 50%),
+    radial-gradient(ellipse at 38% 28%, rgba(220,150,50,0.60), transparent 52%),
     repeating-linear-gradient(
       180deg,
-      #5a2e08 0px,  #5a2e08 8px,
-      #8a4e18 8px,  #8a4e18 16px,
-      #6e3810 16px, #6e3810 22px,
-      #3e1c04 22px, #3e1c04 28px
+      #4e2206 0px,  #4e2206 9px,
+      #7e4010 9px,  #7e4010 18px,
+      #5e2e0a 18px, #5e2e0a 26px,
+      #341402 26px, #341402 34px
     );
   box-shadow:
-    0 0 28px rgba(90,46,8,0.40),
-    0 0 56px rgba(90,46,8,0.15),
-    inset 0 0 18px rgba(0,0,0,0.30);
-  opacity: 0.78;
-  animation: bg-jupiter-rotate 40s linear infinite, bg-jupiter-drift 28s ease-in-out infinite;
+    0 0 32px rgba(78,34,6,0.55),
+    0 0 64px rgba(78,34,6,0.20),
+    inset 0 0 22px rgba(0,0,0,0.40);
+  /* CSS 3D spin — the band gradient sliding looks like rotation */
+  animation: bg-jupiter-spin 18s linear infinite,
+             bg-jupiter-drift 30s ease-in-out infinite;
 }
-.bg-jupiter::after {
+/* Atmospheric highlight */
+.bg-jupiter::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(ellipse at 38% 28%, rgba(220,160,60,0.25), transparent 60%);
+  background: radial-gradient(ellipse at 30% 26%, rgba(255,200,80,0.22), transparent 55%);
+  pointer-events: none;
+}
+/* Great Red Spot hint */
+.bg-jupiter::after {
+  content: "";
+  position: absolute;
+  top: 45%; left: 28%;
+  width: 28px; height: 16px;
+  border-radius: 50%;
+  background: rgba(160,40,10,0.55);
+  box-shadow: 0 0 8px rgba(160,40,10,0.35);
+  pointer-events: none;
 }
 
-@keyframes bg-jupiter-rotate {
-  from { transform: rotateY(0deg) rotateZ(2deg); }
-  to   { transform: rotateY(360deg) rotateZ(2deg); }
+@keyframes bg-jupiter-spin {
+  from { transform: rotateZ(0deg) rotateY(0deg); }
+  to   { transform: rotateZ(360deg) rotateY(20deg); }
 }
 @keyframes bg-jupiter-drift {
-  0%,100% { transform: translateY(0px) rotateY(0deg) rotateZ(2deg); }
-  40%      { transform: translateY(-22px) rotateY(180deg) rotateZ(2deg); }
-  70%      { transform: translateY(-10px) rotateY(270deg) rotateZ(2deg); }
+  0%,100% { margin-top: 0px; }
+  45%      { margin-top: -24px; }
+  75%      { margin-top: -12px; }
 }
 
-/* ── BIG SATURN — bottom-left empty margin ─────────────────
-   Larger than before, visible ring, slow gentle float.        */
+/* ── BIG SATURN — bottom-left margin ───────────────────────
+   Ring clearly visible at rotateX(70deg).                    */
 .saturn-wrapper {
   position: absolute;
-  bottom: 8%;
-  left: 2%;
-  animation: saturn-float 26s ease-in-out infinite;
-  opacity: 0.78;
+  bottom: 7%;
+  left: 1.5%;
+  animation: saturn-float 28s ease-in-out infinite;
   transform-style: preserve-3d;
 }
 .saturn-body {
-  width: 56px; height: 56px;
+  width: 64px; height: 64px;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse at 38% 32%, rgba(210,160,60,0.6), transparent 55%),
-    radial-gradient(circle, #7a4c14 0%, #4e2c08 50%, #2e1604 100%);
+    radial-gradient(ellipse at 36% 30%, rgba(220,160,60,0.65), transparent 52%),
+    radial-gradient(circle, #6e400e 0%, #3e2006 50%, #1e0e02 100%);
   box-shadow:
-    0 0 20px rgba(78,44,8,0.50),
-    inset 0 0 14px rgba(0,0,0,0.35);
+    0 0 22px rgba(62,32,6,0.60),
+    inset 0 0 16px rgba(0,0,0,0.45);
   position: relative;
   z-index: 1;
+  animation: saturn-self-rotate 20s linear infinite;
 }
-/* Ring — dark golden, clear contrast */
+/* Outer ring */
 .saturn-ring {
   position: absolute;
   top: 50%; left: 50%;
-  width: 100px; height: 28px;
+  width: 116px; height: 32px;
   border-radius: 50%;
-  border: 4px solid rgba(140,96,20,0.80);
+  border: 5px solid rgba(120,80,16,0.85);
   box-shadow:
-    0 0 0 2px rgba(100,64,10,0.35),
-    inset 0 0 6px rgba(0,0,0,0.25);
-  transform: translate(-50%, -50%) rotateX(72deg);
+    0 0 0 2.5px rgba(80,50,8,0.40),
+    0 0 14px rgba(120,80,16,0.30),
+    inset 0 0 8px rgba(0,0,0,0.35);
+  transform: translate(-50%, -50%) rotateX(73deg);
   z-index: 0;
 }
+/* Inner ring detail */
 .saturn-ring::after {
   content: "";
   position: absolute;
-  inset: 4px;
+  inset: 5px;
   border-radius: 50%;
-  border: 1.5px solid rgba(160,110,30,0.45);
+  border: 2px solid rgba(160,110,24,0.50);
+}
+@keyframes saturn-self-rotate {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
 }
 @keyframes saturn-float {
-  0%,100% { transform: translate(0, 0)   rotate(-4deg); }
-  35%      { transform: translate(6px,-16px) rotate(-1deg); }
-  70%      { transform: translate(3px,-8px)  rotate(-6deg); }
+  0%,100% { transform: translate(0,0)      rotate(-3deg); }
+  40%      { transform: translate(8px,-20px) rotate(-1deg); }
+  72%      { transform: translate(4px,-10px) rotate(-5deg); }
 }
 
-/* ── MOON — top-left corner ─────────────────────────────── */
+/* ── MOON — top-left ────────────────────────────────────── */
 .moon-float {
   position: absolute;
   top: 3%;
   left: 1.5%;
-  animation: moon-drift 32s ease-in-out infinite;
-  opacity: 0.72;
+  animation: moon-drift 34s ease-in-out infinite;
 }
 .moon-body {
-  width: 30px; height: 30px;
+  width: 34px; height: 34px;
   border-radius: 50%;
-  background: radial-gradient(circle at 36% 34%, #b89040, #7a5c18 50%, #4e3a08);
+  background: radial-gradient(circle at 36% 34%, #a07e30, #6a4e10 50%, #3e2e06);
   box-shadow:
-    0 0 12px rgba(122,92,24,0.40),
-    inset -6px -4px 0 rgba(0,0,0,0.25);
+    0 0 14px rgba(106,78,16,0.50),
+    inset -8px -5px 0 rgba(0,0,0,0.30);
 }
 @keyframes moon-drift {
   0%,100% { transform: translate(0,0) rotate(5deg); }
-  30%      { transform: translate(5px,-12px) rotate(8deg); }
-  65%      { transform: translate(10px,-5px) rotate(3deg); }
+  30%      { transform: translate(6px,-14px) rotate(8deg); }
+  65%      { transform: translate(12px,-6px) rotate(3deg); }
 }
 
-/* ── STARS — only along the 4 screen edges ──────────────── */
-/* Warm dark brown — clearly visible on cream/ivory background */
+/* ── STARS — strictly along all 4 viewport edges ─────────── */
 .star {
   position: absolute;
   border-radius: 50%;
-  background: rgba(100, 64, 12, 0.75);
+  background: rgba(90, 56, 8, 0.80);
   animation: twinkle ease-in-out infinite;
 }
 
-/* Top edge */
-.star-1  { width:3px;height:3px; top:1.5%; left:8%;   animation-duration:3.0s; animation-delay:0s;   }
-.star-2  { width:2px;height:2px; top:2%;   left:24%;  animation-duration:2.6s; animation-delay:.7s;  }
-.star-3  { width:3px;height:3px; top:1%;   left:44%;  animation-duration:3.8s; animation-delay:1.2s; }
-.star-4  { width:2px;height:2px; top:2.5%; left:63%;  animation-duration:2.9s; animation-delay:.3s;  }
-.star-5  { width:4px;height:4px; top:1.5%; left:81%;  animation-duration:3.4s; animation-delay:1.8s; }
-/* Right edge */
-.star-6  { width:3px;height:3px; top:10%;  left:98%;  animation-duration:3.0s; animation-delay:.5s;  }
-.star-7  { width:2px;height:2px; top:26%;  left:99%;  animation-duration:2.7s; animation-delay:2.0s; }
-.star-8  { width:3px;height:3px; top:44%;  left:98%;  animation-duration:3.6s; animation-delay:1.0s; }
+/* Top */
+.star-1  { width:3px;height:3px; top:1.5%; left:7%;   animation-duration:3.0s; animation-delay:0s;   }
+.star-2  { width:2px;height:2px; top:2%;   left:22%;  animation-duration:2.6s; animation-delay:.7s;  }
+.star-3  { width:4px;height:4px; top:1%;   left:42%;  animation-duration:3.8s; animation-delay:1.2s; }
+.star-4  { width:2px;height:2px; top:2.5%; left:62%;  animation-duration:2.9s; animation-delay:.3s;  }
+.star-5  { width:3px;height:3px; top:1.5%; left:80%;  animation-duration:3.4s; animation-delay:1.8s; }
+/* Right */
+.star-6  { width:3px;height:3px; top:9%;   left:98%;  animation-duration:3.0s; animation-delay:.5s;  }
+.star-7  { width:2px;height:2px; top:25%;  left:99%;  animation-duration:2.7s; animation-delay:2.0s; }
+.star-8  { width:3px;height:3px; top:43%;  left:98%;  animation-duration:3.6s; animation-delay:1.0s; }
 .star-9  { width:2px;height:2px; top:60%;  left:99%;  animation-duration:2.4s; animation-delay:.4s;  }
 .star-10 { width:3px;height:3px; top:76%;  left:98%;  animation-duration:3.1s; animation-delay:1.6s; }
-/* Bottom edge */
-.star-11 { width:3px;height:3px; top:97%;  left:14%;  animation-duration:2.8s; animation-delay:.9s;  }
-.star-12 { width:2px;height:2px; top:98%;  left:34%;  animation-duration:3.5s; animation-delay:2.2s; }
-.star-13 { width:3px;height:3px; top:96%;  left:54%;  animation-duration:3.0s; animation-delay:.1s;  }
-.star-14 { width:2px;height:2px; top:97%;  left:71%;  animation-duration:2.5s; animation-delay:1.4s; }
-.star-15 { width:3px;height:3px; top:98%;  left:87%;  animation-duration:3.8s; animation-delay:2.6s; }
-/* Left edge */
-.star-16 { width:2px;height:2px; top:18%;  left:0.4%; animation-duration:2.9s; animation-delay:.6s;  }
-.star-17 { width:3px;height:3px; top:46%;  left:0.5%; animation-duration:3.3s; animation-delay:1.9s; }
+/* Bottom */
+.star-11 { width:3px;height:3px; top:97%;  left:12%;  animation-duration:2.8s; animation-delay:.9s;  }
+.star-12 { width:2px;height:2px; top:98%;  left:32%;  animation-duration:3.5s; animation-delay:2.2s; }
+.star-13 { width:3px;height:3px; top:96%;  left:52%;  animation-duration:3.0s; animation-delay:.1s;  }
+.star-14 { width:2px;height:2px; top:97%;  left:70%;  animation-duration:2.5s; animation-delay:1.4s; }
+.star-15 { width:3px;height:3px; top:98%;  left:86%;  animation-duration:3.8s; animation-delay:2.6s; }
+/* Left */
+.star-16 { width:2px;height:2px; top:17%;  left:0.4%; animation-duration:2.9s; animation-delay:.6s;  }
+.star-17 { width:3px;height:3px; top:45%;  left:0.5%; animation-duration:3.3s; animation-delay:1.9s; }
 .star-18 { width:2px;height:2px; top:70%;  left:0.4%; animation-duration:2.7s; animation-delay:.8s;  }
 
 @keyframes twinkle {
-  0%,100% { opacity:0.20; transform:scale(1);    }
-  50%      { opacity:0.85; transform:scale(1.45); }
+  0%,100% { opacity:0.18; transform:scale(1);    }
+  50%      { opacity:0.90; transform:scale(1.50); }
 }
 
 /* ── SHOOTING STARS ──────────────────────────────────────── */
 .shooting-star {
   position: absolute;
-  top: 4%;
+  top: 5%;
   left: -8%;
-  width: 110px;
+  width: 120px;
   height: 1.5px;
   border-radius: 2px;
-  background: linear-gradient(90deg, transparent, rgba(184,138,20,0.70), transparent);
+  background: linear-gradient(90deg, transparent, rgba(160,110,10,0.80), transparent);
   transform: rotate(16deg);
   opacity: 0;
   animation: shoot 16s ease-in infinite;
-  animation-delay: 8s;
+  animation-delay: 9s;
 }
 .shooting-star-2 {
   top: 22%;
-  width: 75px;
-  animation-duration: 20s;
-  animation-delay: 15s;
+  width: 80px;
+  animation-duration: 22s;
+  animation-delay: 17s;
 }
 @keyframes shoot {
   0%  { transform:rotate(16deg) translateX(0);      opacity:0; }
-  3%  { opacity:0.80; }
+  3%  { opacity:0.85; }
   32% { transform:rotate(16deg) translateX(116vw);  opacity:0; }
   100%{ transform:rotate(16deg) translateX(116vw);  opacity:0; }
 }
 
 /* ── REDUCED MOTION ──────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .orbit, .planet-sun, .saturn-wrapper,
-  .bg-jupiter, .moon-float, .star,
+  .orbit, .planet-sun, .bg-jupiter,
+  .saturn-wrapper, .saturn-body,
+  .moon-float, .star,
   .shooting-star, .shooting-star-2 {
     animation: none !important;
   }
