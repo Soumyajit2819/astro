@@ -150,16 +150,29 @@ export function SiteSections() {
           </div>
 
           <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow backdrop-blur">
-            <div className="rounded-[1.5rem] bg-spiritual p-6">
-              <p className="text-sm uppercase tracking-[0.2em] text-gold">Spiritual Mentor</p>
-              <div className="mt-5 flex items-center gap-4">
-                <AstrologerAvatar />
-                <div>
-                  <h2 className="font-display text-3xl text-sage">{mainAstrologer.name}</h2>
-                  <p className="mt-2 text-sm text-sage/80">{mainAstrologer.title}</p>
+            {/* Spiritual Mentor profile with photo */}
+            <div className="relative overflow-hidden rounded-[1.5rem]">
+              {mainAstrologer.photoUrl ? (
+                <div className="relative h-40 w-full overflow-hidden rounded-t-[1.5rem]">
+                  <img
+                    src={mainAstrologer.photoUrl}
+                    alt={mainAstrologer.name}
+                    className="h-full w-full object-cover object-top"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/20 to-transparent" />
                 </div>
+              ) : null}
+              <div className="rounded-[1.5rem] bg-spiritual p-6">
+                <p className="text-sm uppercase tracking-[0.2em] text-gold">Spiritual Mentor</p>
+                <div className="mt-5 flex items-center gap-4">
+                  <AstrologerAvatar />
+                  <div>
+                    <h2 className="font-display text-3xl text-sage">{mainAstrologer.name}</h2>
+                    <p className="mt-2 text-sm text-sage/80">{mainAstrologer.title}</p>
+                  </div>
+                </div>
+                <p className="mt-6 text-sm leading-7 text-sage/90">{mainAstrologer.bio}</p>
               </div>
-              <p className="mt-6 text-sm leading-7 text-sage/90">{mainAstrologer.bio}</p>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Light, calm design" text="A simple spiritual presentation that feels clear, personal, and trustworthy." />
@@ -177,21 +190,82 @@ export function SiteSections() {
     return (
       <section id="about" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-8 shadow-glow">
-            <div className="flex h-full flex-col justify-between rounded-[1.5rem] border border-gold/20 bg-gold/10 p-8">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-gold">Astrologer Profile</p>
-                <h3 className="mt-4 font-display text-3xl text-sage">{mainAstrologer.name}</h3>
-                <p className="mt-3 text-sm text-sage/80">{mainAstrologer.title}</p>
-                <p className="mt-4 text-sage/75">{mainAstrologer.experience}</p>
+
+          {/* ── Astrologer Profile Card ── */}
+          <div className="rounded-[2rem] border border-sage/10 bg-white/75 shadow-glow overflow-hidden">
+            {/* Photo background header */}
+            <div className="relative h-52 w-full overflow-hidden rounded-t-[2rem]">
+              {mainAstrologer.photoUrl ? (
+                <img
+                  src={mainAstrologer.photoUrl}
+                  alt={mainAstrologer.name}
+                  className="h-full w-full object-cover object-top"
+                />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-gold/20 via-ivory to-sage/10 flex items-center justify-center">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white/80 font-display text-4xl text-sage shadow-glow">
+                    {mainAstrologer.name.split(" ").slice(0, 2).map((p) => p[0]).join("")}
+                  </div>
+                </div>
+              )}
+              {/* Gradient overlay so text below is readable */}
+              <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/30 to-transparent" />
+              {/* Name floated over the bottom of the photo */}
+              <div className="absolute bottom-0 left-0 right-0 px-6 pb-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Astrologer Profile</p>
+                <h3 className="mt-1 font-display text-2xl text-sage leading-tight">{mainAstrologer.name}</h3>
               </div>
-              <div className="mt-6 flex gap-3">
-                <SocialLink href={mainAstrologer.instagram} icon={<Instagram className="h-4 w-4" />} />
-                <SocialLink href={mainAstrologer.youtube} icon={<Youtube className="h-4 w-4" />} />
-                <SocialLink href={mainAstrologer.facebook} icon={<Facebook className="h-4 w-4" />} />
+            </div>
+
+            {/* Card body */}
+            <div className="flex flex-col gap-4 p-6">
+              <div>
+                <p className="text-sm font-semibold text-sage">{mainAstrologer.title}</p>
+                <p className="mt-2 text-sm leading-6 text-sage/75">{mainAstrologer.experience}</p>
+                {mainAstrologer.bio ? (
+                  <p className="mt-3 text-sm leading-6 text-sage/70 line-clamp-3">{mainAstrologer.bio}</p>
+                ) : null}
+              </div>
+
+              {/* Social links — dark bordered, labelled */}
+              <div className="mt-2 flex flex-wrap gap-3">
+                {mainAstrologer.instagram ? (
+                  <a
+                    href={mainAstrologer.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-sage/30 bg-sage px-4 py-2 text-xs font-semibold text-ivory transition hover:bg-sage/80"
+                  >
+                    <Instagram className="h-3.5 w-3.5" />
+                    Instagram
+                  </a>
+                ) : null}
+                {mainAstrologer.youtube ? (
+                  <a
+                    href={mainAstrologer.youtube}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-ember/30 bg-ember px-4 py-2 text-xs font-semibold text-ivory transition hover:bg-ember/80"
+                  >
+                    <Youtube className="h-3.5 w-3.5" />
+                    YouTube
+                  </a>
+                ) : null}
+                {mainAstrologer.facebook ? (
+                  <a
+                    href={mainAstrologer.facebook}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-sage/30 bg-sage/80 px-4 py-2 text-xs font-semibold text-ivory transition hover:bg-sage/60"
+                  >
+                    <Facebook className="h-3.5 w-3.5" />
+                    Facebook
+                  </a>
+                ) : null}
               </div>
             </div>
           </div>
+
           <div>
             <SectionHeading
               eyebrow="About"
