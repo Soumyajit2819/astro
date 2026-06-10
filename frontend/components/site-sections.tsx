@@ -150,29 +150,35 @@ export function SiteSections() {
           </div>
 
           <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow backdrop-blur">
-            {/* Spiritual Mentor profile with photo */}
+            {/* Spiritual Mentor profile with full photo */}
             <div className="relative overflow-hidden rounded-[1.5rem]">
               {mainAstrologer.photoUrl ? (
-                <div className="relative h-40 w-full overflow-hidden rounded-t-[1.5rem]">
+                <div className="relative w-full overflow-hidden rounded-[1.5rem]" style={{ aspectRatio: "4/3" }}>
                   <img
                     src={mainAstrologer.photoUrl}
                     alt={mainAstrologer.name}
-                    className="h-full w-full object-cover object-top"
+                    className="h-full w-full object-cover object-center"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/20 to-transparent" />
-                </div>
-              ) : null}
-              <div className="rounded-[1.5rem] bg-spiritual p-6">
-                <p className="text-sm uppercase tracking-[0.2em] text-gold">Spiritual Mentor</p>
-                <div className="mt-5 flex items-center gap-4">
-                  <AstrologerAvatar />
-                  <div>
-                    <h2 className="font-display text-3xl text-sage">{mainAstrologer.name}</h2>
-                    <p className="mt-2 text-sm text-sage/80">{mainAstrologer.title}</p>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-gold/90">Spiritual Mentor</p>
+                    <h2 className="mt-1 font-display text-2xl text-white drop-shadow">{mainAstrologer.name}</h2>
+                    <p className="mt-1 text-sm text-white/80">{mainAstrologer.title}</p>
                   </div>
                 </div>
-                <p className="mt-6 text-sm leading-7 text-sage/90">{mainAstrologer.bio}</p>
-              </div>
+              ) : (
+                <div className="rounded-[1.5rem] bg-spiritual p-6">
+                  <p className="text-sm uppercase tracking-[0.2em] text-gold">Spiritual Mentor</p>
+                  <div className="mt-5 flex items-center gap-4">
+                    <AstrologerAvatar />
+                    <div>
+                      <h2 className="font-display text-3xl text-sage">{mainAstrologer.name}</h2>
+                      <p className="mt-2 text-sm text-sage/80">{mainAstrologer.title}</p>
+                    </div>
+                  </div>
+                  <p className="mt-6 text-sm leading-7 text-sage/90">{mainAstrologer.bio}</p>
+                </div>
+              )}
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Light, calm design" text="A simple spiritual presentation that feels clear, personal, and trustworthy." />
@@ -193,13 +199,13 @@ export function SiteSections() {
 
           {/* ── Astrologer Profile Card ── */}
           <div className="rounded-[2rem] border border-sage/10 bg-white/75 shadow-glow overflow-hidden">
-            {/* Photo background header */}
-            <div className="relative h-52 w-full overflow-hidden rounded-t-[2rem]">
+            {/* Full portrait photo */}
+            <div className="relative w-full overflow-hidden rounded-t-[2rem]" style={{ aspectRatio: "3/4", maxHeight: "420px" }}>
               {mainAstrologer.photoUrl ? (
                 <img
                   src={mainAstrologer.photoUrl}
                   alt={mainAstrologer.name}
-                  className="h-full w-full object-cover object-top"
+                  className="h-full w-full object-cover object-center"
                 />
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-gold/20 via-ivory to-sage/10 flex items-center justify-center">
@@ -208,24 +214,21 @@ export function SiteSections() {
                   </div>
                 </div>
               )}
-              {/* Gradient overlay so text below is readable */}
-              <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/30 to-transparent" />
-              {/* Name floated over the bottom of the photo */}
-              <div className="absolute bottom-0 left-0 right-0 px-6 pb-4">
-                <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Astrologer Profile</p>
-                <h3 className="mt-1 font-display text-2xl text-sage leading-tight">{mainAstrologer.name}</h3>
+              {/* Subtle gradient at bottom so name text is readable */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 px-6 pb-5">
+                <p className="text-xs uppercase tracking-[0.3em] text-gold/90 font-medium">Astrologer Profile</p>
+                <h3 className="mt-1 font-display text-2xl text-white leading-tight drop-shadow">{mainAstrologer.name}</h3>
+                <p className="mt-1 text-sm text-white/80">{mainAstrologer.title}</p>
               </div>
             </div>
 
             {/* Card body */}
             <div className="flex flex-col gap-4 p-6">
-              <div>
-                <p className="text-sm font-semibold text-sage">{mainAstrologer.title}</p>
-                <p className="mt-2 text-sm leading-6 text-sage/75">{mainAstrologer.experience}</p>
-                {mainAstrologer.bio ? (
-                  <p className="mt-3 text-sm leading-6 text-sage/70 line-clamp-3">{mainAstrologer.bio}</p>
-                ) : null}
-              </div>
+              <p className="text-sm leading-6 text-sage/75">{mainAstrologer.experience}</p>
+              {mainAstrologer.bio ? (
+                <p className="text-sm leading-6 text-sage/70">{mainAstrologer.bio}</p>
+              ) : null}
 
               {/* Social links — dark bordered, labelled */}
               <div className="mt-2 flex flex-wrap gap-3">
