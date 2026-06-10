@@ -40,6 +40,7 @@ export function SiteSections() {
   const { config, ready, loading, error } = useSiteConfig();
   const [feedbackItems, setFeedbackItems] = useState<FeedbackCardItem[]>([]);
   const [showAllFeedback, setShowAllFeedback] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const mainAstrologer = config.astrologers[0];
 
   useEffect(() => {
@@ -225,18 +226,37 @@ export function SiteSections() {
           description="Each option shows the amount up front so the payment QR can update correctly before the client proceeds."
         />
         <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {config.services.map((service) => (
-            <div key={service.id} className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow">
-              <p className="text-sm uppercase tracking-[0.25em] text-gold">{service.type}</p>
-              <h3 className="mt-4 font-display text-2xl text-sage">{service.name}</h3>
-              <p className="mt-4 text-sm leading-7 text-sage/80">{service.description}</p>
-              <p className="mt-6 text-xl font-semibold text-sage">Rs. {service.price}</p>
-              <a href="#booking" className="mt-6 inline-block rounded-full bg-gold/15 px-5 py-3 text-sm font-semibold text-sage">
-                Choose this
-              </a>
-              <p className="mt-3 text-xs text-sage/65">Payment opens inside the booking section with QR, UPI ID, and screenshot confirmation.</p>
-            </div>
-          ))}
+          {config.services.map((service) => {
+            const discountedPrice =
+              (service.discountPercent ?? 0) > 0
+                ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
+                : service.price;
+            return (
+              <div key={service.id} className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow">
+                <p className="text-sm uppercase tracking-[0.25em] text-gold">{service.type}</p>
+                <h3 className="mt-4 font-display text-2xl text-sage">{service.name}</h3>
+                <p className="mt-4 text-sm leading-7 text-sage/80">{service.description}</p>
+                {discountedPrice < service.price ? (
+                  <div className="mt-6">
+                    <p className="text-sm text-sage/50 line-through">Rs. {service.price}</p>
+                    <p className="text-xl font-semibold text-sage">Rs. {discountedPrice}</p>
+                  </div>
+                ) : (
+                  <p className="mt-6 text-xl font-semibold text-sage">Rs. {service.price}</p>
+                )}
+                <a
+                  href="#booking"
+                  onClick={() => setSelectedServiceId(service.id)}
+                  className="mt-6 inline-block rounded-full bg-gold/15 px-5 py-3 text-sm font-semibold text-sage"
+                >
+                  Choose this
+                </a>
+                <p className="mt-3 text-xs text-sage/65">
+                  Payment opens inside the booking section with QR, UPI ID, and screenshot confirmation.
+                </p>
+              </div>
+            );
+          })}
         </div>
       </section>
     );
@@ -280,7 +300,7 @@ export function SiteSections() {
             </div>
           </div>
           <div id="booking">
-            <BookingForm config={config} />
+            <BookingForm config={config} initialServiceId={selectedServiceId} />
           </div>
         </div>
         {loading ? <p className="mt-6 text-sm text-sage/60">Loading live content from Supabase...</p> : null}

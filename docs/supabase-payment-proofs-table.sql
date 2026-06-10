@@ -5,6 +5,9 @@ create table if not exists public.payment_proofs (
   phone_number text,
   service_name text,
   amount numeric,
+  original_amount numeric,
+  coupon_code text,
+  coupon_discount_percent numeric(5,2),
   payment_screenshot_url text,
   notes text,
   status text default 'pending',
@@ -31,3 +34,12 @@ for update
 to public
 using (true)
 with check (true);
+
+-- ============================================================
+-- Migration: add coupon tracking columns to existing table
+-- Run this if you already created payment_proofs without them.
+-- ============================================================
+alter table public.payment_proofs
+  add column if not exists original_amount numeric,
+  add column if not exists coupon_code text,
+  add column if not exists coupon_discount_percent numeric(5,2);

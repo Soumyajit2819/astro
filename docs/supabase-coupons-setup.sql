@@ -55,6 +55,5 @@ using (true);
 -- ============================================================
 insert into public.coupons (code, discount_percent, active, description)
 values
-  ('WELCOME10', 10, true, 'Welcome offer — 10% extra off your first booking'),
-  ('FESTIVE20', 20, true, 'Festive season special — 20% additional discount')
+  ('ASTRO10', 10, true, '10% off your booking')
 on conflict (code) do nothing;
