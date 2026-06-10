@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { PlanetAnimations } from "@/components/planet-animations";
 
 export const metadata: Metadata = {
   title: "Cosmic Consultation Studio",
@@ -10,6 +11,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className="bg-ivory font-body text-sage antialiased">
+        <PlanetAnimations />
         {children}
       </body>
     </html>
