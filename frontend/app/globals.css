@@ -29,20 +29,22 @@ body::before {
   background-repeat: no-repeat;
 }
 
-/* Layer 2: cream wash so the site keeps its light theme
-   and all text/cards remain fully readable.
-   Opacity 0.88 = strong cream tint, image just barely visible in margins */
+/* Layer 2: warm tint overlay — light enough to show the space image
+   in the background margins, strong enough to keep cards/text readable.
+   The gradient is darker on edges (where content lives) and
+   more transparent in the middle margins (where planets show). */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -2;
-  background: linear-gradient(
-    165deg,
-    rgba(252,248,239,0.90) 0%,
-    rgba(247,241,227,0.88) 48%,
-    rgba(239,230,209,0.90) 100%
-  );
+  background:
+    /* Vignette — darken edges slightly so space shows in the clear middle */
+    radial-gradient(ellipse at 50% 40%,
+      rgba(252,248,239,0.55) 0%,
+      rgba(247,241,227,0.72) 45%,
+      rgba(239,230,209,0.88) 100%
+    );
 }
 
 /* sections must NOT create a stacking context */
