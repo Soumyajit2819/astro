@@ -115,77 +115,95 @@ export function SiteSections() {
   function HeroSection() {
     return (
       <section className="relative overflow-hidden">
-        <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-28">
-          <div>
-            <div className="mb-6 inline-flex rounded-full border border-gold/30 bg-white/70 px-4 py-2 text-sm font-medium text-sage">
+        <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-28">
+          {/* Left — headline + CTAs + stat pills */}
+          <div className="flex flex-col justify-center">
+            <div className="mb-6 inline-flex w-fit rounded-full border border-gold/30 bg-white/70 px-4 py-2 text-sm font-medium text-sage shadow-glow backdrop-blur">
               {config.heroTagline}
             </div>
-            <h1 className="max-w-4xl font-display text-5xl font-semibold leading-tight text-sage sm:text-6xl">
-              Gentle guidance for astrology, healing, and spiritual clarity.
+            <h1 className="max-w-2xl font-display text-5xl font-semibold leading-tight text-sage sm:text-6xl">
+              Gentle guidance for astrology, healing &amp; spiritual clarity.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-sage/90">
-              A bright and welcoming space for consultations, remedies, and learning. Select your service, complete
-              the payment, and share your details so our team can reach you with the next steps.
+            <p className="mt-6 max-w-xl text-lg leading-8 text-sage/80">
+              Select your service, complete the UPI payment, and share your details — our team will reach you with the next steps.
             </p>
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <a href="#booking" className="rounded-full bg-sage px-6 py-3 text-center font-semibold text-ivory">
-                Start Your Booking
+            <div className="mt-8 flex flex-wrap gap-4">
+              <a href="#booking" className="rounded-full bg-sage px-7 py-3 text-center font-semibold text-ivory shadow-glow transition hover:bg-sage/85">
+                Book a Consultation
               </a>
-              <a href="#services" className="rounded-full border border-sage/15 px-6 py-3 text-center font-semibold text-sage">
-                Explore Services
+              <a href="#about" className="rounded-full border border-sage/20 bg-white/70 px-7 py-3 text-center font-semibold text-sage backdrop-blur transition hover:bg-white/90">
+                Meet the Astrologer
               </a>
             </div>
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+
+            {/* Stat pills */}
+            <div className="mt-10 grid grid-cols-3 gap-4">
               {[
-                [mainAstrologer.experience.split(" ")[0], "Years of guidance"],
-                [`${config.services.length}`, "Offerings"],
-                ["100%", "Guided manually"]
+                [mainAstrologer.experience.split(" ")[0], "Years of\nguidance"],
+                [`${config.services.length}+`, "Services\noffered"],
+                ["100%", "Manually\nguided"]
               ].map(([value, label]) => (
-                <div key={label} className="rounded-[1.75rem] border border-sage/10 bg-white/70 p-4 shadow-glow">
-                  <p className="font-display text-2xl text-sage">{value}</p>
-                  <p className="mt-1 text-sm text-sage/65">{label}</p>
+                <div key={label} className="rounded-[1.5rem] border border-sage/10 bg-white/70 p-4 text-center shadow-glow backdrop-blur">
+                  <p className="font-display text-3xl font-semibold text-sage">{value}</p>
+                  <p className="mt-1 whitespace-pre-line text-xs leading-4 text-sage/60">{label}</p>
                 </div>
               ))}
             </div>
+
+            {/* Feature rows */}
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="flex items-start gap-3 rounded-[1.25rem] border border-sage/10 bg-white/65 px-4 py-3 backdrop-blur">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                <p className="text-sm text-sage/80">Personalised consultations with birth chart analysis</p>
+              </div>
+              <div className="flex items-start gap-3 rounded-[1.25rem] border border-sage/10 bg-white/65 px-4 py-3 backdrop-blur">
+                <Flower2 className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                <p className="text-sm text-sage/80">Classes for beginners to advanced students</p>
+              </div>
+              <div className="flex items-start gap-3 rounded-[1.25rem] border border-sage/10 bg-white/65 px-4 py-3 backdrop-blur">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                <p className="text-sm text-sage/80">Direct WhatsApp follow-up after payment confirmation</p>
+              </div>
+              <div className="flex items-start gap-3 rounded-[1.25rem] border border-sage/10 bg-white/65 px-4 py-3 backdrop-blur">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                <p className="text-sm text-sage/80">UPI payment with screenshot proof — no gateway needed</p>
+              </div>
+            </div>
           </div>
 
-          <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 shadow-glow backdrop-blur">
-            {/* Spiritual Mentor profile with full photo */}
-            <div className="relative overflow-hidden rounded-[1.5rem]">
-              {mainAstrologer.photoUrl ? (
-                <div className="relative w-full overflow-hidden rounded-[1.5rem]" style={{ aspectRatio: "4/3" }}>
-                  <img
-                    src={mainAstrologer.photoUrl}
-                    alt={mainAstrologer.name}
-                    className="h-full w-full object-cover object-center"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-gold/90">Spiritual Mentor</p>
-                    <h2 className="mt-1 font-display text-2xl text-white drop-shadow">{mainAstrologer.name}</h2>
-                    <p className="mt-1 text-sm text-white/80">{mainAstrologer.title}</p>
+          {/* Right — services quick-look */}
+          <div className="flex flex-col gap-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-gold">Available Services</p>
+            {config.services.map((service) => {
+              const discounted = (service.discountPercent ?? 0) > 0
+                ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
+                : service.price;
+              return (
+                <div key={service.id} className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-sage/10 bg-white/70 px-5 py-4 shadow-glow backdrop-blur">
+                  <div>
+                    <p className="font-semibold text-sage">{service.name}</p>
+                    <p className="mt-0.5 text-xs text-sage/60 capitalize">{service.type}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {discounted < service.price ? (
+                      <>
+                        <p className="text-xs text-sage/40 line-through">Rs. {service.price}</p>
+                        <p className="font-display text-lg font-semibold text-sage">Rs. {discounted}</p>
+                      </>
+                    ) : (
+                      <p className="font-display text-lg font-semibold text-sage">Rs. {service.price}</p>
+                    )}
+                    <a
+                      href="#booking"
+                      onClick={() => setSelectedServiceId(service.id)}
+                      className="mt-2 inline-block rounded-full bg-gold/15 px-4 py-1.5 text-xs font-semibold text-sage transition hover:bg-gold/25"
+                    >
+                      Book now
+                    </a>
                   </div>
                 </div>
-              ) : (
-                <div className="rounded-[1.5rem] bg-spiritual p-6">
-                  <p className="text-sm uppercase tracking-[0.2em] text-gold">Spiritual Mentor</p>
-                  <div className="mt-5 flex items-center gap-4">
-                    <AstrologerAvatar />
-                    <div>
-                      <h2 className="font-display text-3xl text-sage">{mainAstrologer.name}</h2>
-                      <p className="mt-2 text-sm text-sage/80">{mainAstrologer.title}</p>
-                    </div>
-                  </div>
-                  <p className="mt-6 text-sm leading-7 text-sage/90">{mainAstrologer.bio}</p>
-                </div>
-              )}
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Light, calm design" text="A simple spiritual presentation that feels clear, personal, and trustworthy." />
-              <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Guided process" text="Clients move step by step from service selection to payment confirmation." />
-              <FeatureCard icon={<Phone className="h-5 w-5" />} title="Direct follow-up" text="Once payment is marked done, the astrologer receives a ready message." />
-              <FeatureCard icon={<Flower2 className="h-5 w-5" />} title="Smart details intake" text="Consultations collect birth details, while classes keep the form simpler." />
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -195,98 +213,94 @@ export function SiteSections() {
   function AboutSection() {
     return (
       <section id="about" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
 
-          {/* ── Astrologer Profile Card ── */}
+          {/* ── Full portrait card ── */}
           <div className="rounded-[2rem] border border-sage/10 bg-white/75 shadow-glow overflow-hidden">
-            {/* Full portrait photo */}
-            <div className="relative w-full overflow-hidden rounded-t-[2rem]" style={{ aspectRatio: "3/4", maxHeight: "420px" }}>
+            <div className="relative w-full overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: "480px" }}>
               {mainAstrologer.photoUrl ? (
                 <img
                   src={mainAstrologer.photoUrl}
                   alt={mainAstrologer.name}
-                  className="h-full w-full object-cover object-center"
+                  className="h-full w-full object-cover object-top"
                 />
               ) : (
-                <div className="h-full w-full bg-gradient-to-br from-gold/20 via-ivory to-sage/10 flex items-center justify-center">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white/80 font-display text-4xl text-sage shadow-glow">
+                <div className="h-full w-full bg-gradient-to-br from-gold/15 via-ivory to-sage/10 flex items-center justify-center">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-[2rem] bg-white/80 font-display text-5xl text-sage shadow-glow">
                     {mainAstrologer.name.split(" ").slice(0, 2).map((p) => p[0]).join("")}
                   </div>
                 </div>
               )}
-              {/* Subtle gradient at bottom so name text is readable */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 px-6 pb-5">
-                <p className="text-xs uppercase tracking-[0.3em] text-gold/90 font-medium">Astrologer Profile</p>
-                <h3 className="mt-1 font-display text-2xl text-white leading-tight drop-shadow">{mainAstrologer.name}</h3>
+              {/* Dark gradient overlay at bottom for text legibility */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
+                <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Astrologer Profile</p>
+                <h3 className="mt-1.5 font-display text-2xl leading-tight text-white drop-shadow-md">{mainAstrologer.name}</h3>
                 <p className="mt-1 text-sm text-white/80">{mainAstrologer.title}</p>
               </div>
             </div>
 
-            {/* Card body */}
-            <div className="flex flex-col gap-4 p-6">
-              <p className="text-sm leading-6 text-sage/75">{mainAstrologer.experience}</p>
-              {mainAstrologer.bio ? (
-                <p className="text-sm leading-6 text-sage/70">{mainAstrologer.bio}</p>
+            {/* Social buttons below photo */}
+            <div className="flex flex-wrap gap-3 p-5">
+              {mainAstrologer.instagram ? (
+                <a href={mainAstrologer.instagram} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-sage/25 bg-sage px-4 py-2 text-xs font-semibold text-ivory shadow-sm transition hover:bg-sage/80">
+                  <Instagram className="h-3.5 w-3.5" /> Instagram
+                </a>
               ) : null}
-
-              {/* Social links — dark bordered, labelled */}
-              <div className="mt-2 flex flex-wrap gap-3">
-                {mainAstrologer.instagram ? (
-                  <a
-                    href={mainAstrologer.instagram}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-sage/30 bg-sage px-4 py-2 text-xs font-semibold text-ivory transition hover:bg-sage/80"
-                  >
-                    <Instagram className="h-3.5 w-3.5" />
-                    Instagram
-                  </a>
-                ) : null}
-                {mainAstrologer.youtube ? (
-                  <a
-                    href={mainAstrologer.youtube}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-ember/30 bg-ember px-4 py-2 text-xs font-semibold text-ivory transition hover:bg-ember/80"
-                  >
-                    <Youtube className="h-3.5 w-3.5" />
-                    YouTube
-                  </a>
-                ) : null}
-                {mainAstrologer.facebook ? (
-                  <a
-                    href={mainAstrologer.facebook}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-sage/30 bg-sage/80 px-4 py-2 text-xs font-semibold text-ivory transition hover:bg-sage/60"
-                  >
-                    <Facebook className="h-3.5 w-3.5" />
-                    Facebook
-                  </a>
-                ) : null}
-              </div>
+              {mainAstrologer.youtube ? (
+                <a href={mainAstrologer.youtube} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-ember/25 bg-ember px-4 py-2 text-xs font-semibold text-ivory shadow-sm transition hover:bg-ember/80">
+                  <Youtube className="h-3.5 w-3.5" /> YouTube
+                </a>
+              ) : null}
+              {mainAstrologer.facebook ? (
+                <a href={mainAstrologer.facebook} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-sage/25 bg-sage/85 px-4 py-2 text-xs font-semibold text-ivory shadow-sm transition hover:bg-sage/65">
+                  <Facebook className="h-3.5 w-3.5" /> Facebook
+                </a>
+              ) : null}
             </div>
           </div>
 
-          <div>
-            <SectionHeading
-              eyebrow="About"
-              title="An astrology website with a warm spiritual tone and a practical booking flow"
-              description="The experience stays calm and easy to understand while still collecting the exact details needed for consultations and payment follow-up."
-            />
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {/* ── Bio + highlights ── */}
+          <div className="flex flex-col gap-6">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">About</p>
+              <h2 className="mt-3 font-display text-4xl leading-tight text-sage">
+                Experienced guidance rooted in Vedic tradition
+              </h2>
+              <p className="mt-4 text-base leading-7 text-sage/75">
+                {mainAstrologer.bio || "Offering deep, personalised consultations in Vedic astrology, numerology, and spiritual mentorship for over a decade."}
+              </p>
+              <p className="mt-3 text-sm text-sage/60">{mainAstrologer.experience}</p>
+            </div>
+
+            {/* Highlights grid */}
+            <div className="grid gap-4 sm:grid-cols-2">
               {[
-                "Light theme with a restrained 3-color palette",
-                "Service cards with visible pricing",
-                "Service-specific intake before confirmation",
-                "Manual payment confirmation without a payment gateway"
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-3 rounded-[1.5rem] border border-sage/10 bg-white/75 p-4">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-gold" />
-                  <p className="text-sm text-sage/80">{item}</p>
+                { icon: <Sparkles className="h-4 w-4" />, text: "Vedic astrology & birth chart readings" },
+                { icon: <Flower2 className="h-4 w-4" />, text: "Numerology & spiritual healing" },
+                { icon: <CheckCircle2 className="h-4 w-4" />, text: "Classes for beginners to advanced" },
+                { icon: <Phone className="h-4 w-4" />, text: "Direct follow-up on WhatsApp" }
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex items-start gap-3 rounded-[1.25rem] border border-sage/10 bg-white/70 px-4 py-3 shadow-glow backdrop-blur">
+                  <span className="mt-0.5 text-gold shrink-0">{icon}</span>
+                  <p className="text-sm text-sage/80">{text}</p>
                 </div>
               ))}
+            </div>
+
+            {/* CTA */}
+            <div className="flex flex-wrap gap-4 pt-2">
+              <a href="#booking"
+                className="rounded-full bg-sage px-7 py-3 text-sm font-semibold text-ivory shadow-glow transition hover:bg-sage/85">
+                Book a Consultation
+              </a>
+              <a href="#services"
+                className="rounded-full border border-sage/20 bg-white/70 px-7 py-3 text-sm font-semibold text-sage backdrop-blur transition hover:bg-white/90">
+                View Services
+              </a>
             </div>
           </div>
         </div>
