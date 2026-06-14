@@ -13,44 +13,39 @@ const links = [
 ] as const;
 
 /* ── AstroVerse SVG Logo ─────────────────────────────────────
-   A crescent moon cradling a 6-pointed star, with a small
-   orbit ring — original, simple, spiritually themed.
-   Not a registered trademark of any known brand.
+   "A" and "V" overlapping monogram — bold, solid, original.
+   A sits slightly left, V overlaps from the right.
+   Gold fill with sage shadow for depth.
    ─────────────────────────────────────────────────────────── */
-function AstroVerseLogo({ size = 32 }: { size?: number }) {
+function AstroVerseLogo({ size = 36 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 40 40"
+      viewBox="0 0 44 44"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="AstroVerse logo"
+      aria-label="AstroVerse logo — AV monogram"
     >
-      {/* Outer orbit ellipse */}
-      <ellipse
-        cx="20" cy="20"
-        rx="18" ry="7"
-        stroke="#c89b3c"
-        strokeWidth="1.4"
-        strokeDasharray="3 2"
-        transform="rotate(-25 20 20)"
-        opacity="0.7"
-      />
-      {/* Crescent moon */}
-      <path
-        d="M20 7 C13 7 8 13 8 20 C8 27 13 33 20 33 C15 29 13 24.5 13 20 C13 15.5 15 11 20 7Z"
-        fill="#c89b3c"
-        opacity="0.90"
-      />
-      {/* 6-pointed star (two triangles) */}
-      <polygon
-        points="24,12 25.7,17 31,17 26.6,20.2 28.3,25.2 24,22 19.7,25.2 21.4,20.2 17,17 22.3,17"
-        fill="#52624f"
-        opacity="0.85"
-      />
-      {/* Centre dot */}
-      <circle cx="24" cy="19" r="1.8" fill="#c89b3c" />
+      {/* Circle background */}
+      <circle cx="22" cy="22" r="21" fill="#52624f" />
+
+      {/* A — left-anchored, slightly offset right */}
+      {/* Left leg */}
+      <polygon points="8,36 15,10 19,10 26,36 21.5,36 19.5,28.5 13,28.5 11,36" fill="#c89b3c" />
+      {/* A crossbar */}
+      <rect x="13.8" y="24" width="7.2" height="3" fill="#c89b3c" />
+
+      {/* V — overlaps A from centre, slightly lighter so both read */}
+      {/* Left leg of V */}
+      <polygon points="17,10 22,10 28,32 25,32" fill="#f7f1e3" opacity="0.95" />
+      {/* Right leg of V */}
+      <polygon points="22,10 36,10 31,36 25,32 28,32" fill="#f7f1e3" opacity="0.95" />
+      {/* V inner cutout to show depth */}
+      <polygon points="22,10 27.5,10 28,32 22,26" fill="#f7f1e3" opacity="0.95" />
+
+      {/* Thin gold rim */}
+      <circle cx="22" cy="22" r="20.2" stroke="#c89b3c" strokeWidth="1.2" fill="none" opacity="0.6" />
     </svg>
   );
 }
@@ -64,7 +59,7 @@ export function Navbar({ brandName }: { brandName: string }) {
 
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2.5 text-sage">
-          <AstroVerseLogo size={36} />
+          <AstroVerseLogo size={40} />
           <div className="flex flex-col leading-none">
             <span className="font-display text-xl font-semibold tracking-wide text-sage">
               {brandName}
