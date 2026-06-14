@@ -72,8 +72,8 @@ export type SiteConfig = {
 };
 
 export const defaultSiteConfig: SiteConfig = {
-  brandName: "Cosmic Consultation Studio",
-  heroTagline: "Consultations, classes, remedies, and spiritual guidance",
+  brandName: "AstroVerse",
+  heroTagline: "Vedic astrology, numerology & spiritual guidance",
   heroTitle: "Simple astrology website for consultations and classes with direct UPI booking.",
   heroDescription:
     "Show your services, class schedule, experience, and social links in one elegant place. Clients can choose a service, pay by UPI, and send payment screenshot to the astrologer for final confirmation.",

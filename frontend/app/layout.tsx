@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cosmic Consultation Studio",
-  description: "Simple astrology consultation and class website with editable content, UPI payment details, and WhatsApp confirmation flow."
+  title: "AstroVerse — Vedic Astrology & Spiritual Consultations",
+  description: "Book personalised Vedic astrology consultations, numerology readings, and spiritual guidance with AstroVerse. Pay via UPI and connect directly with your astrologer."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
