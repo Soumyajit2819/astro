@@ -12,41 +12,16 @@ const links = [
   ["Contact", "#contact"]
 ] as const;
 
-/* ── AstroVerse SVG Logo ─────────────────────────────────────
-   "A" and "V" overlapping monogram — bold, solid, original.
-   A sits slightly left, V overlaps from the right.
-   Gold fill with sage shadow for depth.
-   ─────────────────────────────────────────────────────────── */
-function AstroVerseLogo({ size = 36 }: { size?: number }) {
+/* ── AstroVerse Logo — uses the uploaded PNG ── */
+function AstroVerseLogo({ size = 40 }: { size?: number }) {
   return (
-    <svg
+    <img
+      src="/astroverse-logo.png"
+      alt="AstroVerse logo"
       width={size}
       height={size}
-      viewBox="0 0 44 44"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label="AstroVerse logo — AV monogram"
-    >
-      {/* Circle background */}
-      <circle cx="22" cy="22" r="21" fill="#52624f" />
-
-      {/* A — left-anchored, slightly offset right */}
-      {/* Left leg */}
-      <polygon points="8,36 15,10 19,10 26,36 21.5,36 19.5,28.5 13,28.5 11,36" fill="#c89b3c" />
-      {/* A crossbar */}
-      <rect x="13.8" y="24" width="7.2" height="3" fill="#c89b3c" />
-
-      {/* V — overlaps A from centre, slightly lighter so both read */}
-      {/* Left leg of V */}
-      <polygon points="17,10 22,10 28,32 25,32" fill="#f7f1e3" opacity="0.95" />
-      {/* Right leg of V */}
-      <polygon points="22,10 36,10 31,36 25,32 28,32" fill="#f7f1e3" opacity="0.95" />
-      {/* V inner cutout to show depth */}
-      <polygon points="22,10 27.5,10 28,32 22,26" fill="#f7f1e3" opacity="0.95" />
-
-      {/* Thin gold rim */}
-      <circle cx="22" cy="22" r="20.2" stroke="#c89b3c" strokeWidth="1.2" fill="none" opacity="0.6" />
-    </svg>
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 
@@ -58,16 +33,11 @@ export function Navbar({ brandName }: { brandName: string }) {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
 
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5 text-sage">
+        <Link href="/" className="flex items-center gap-2 text-sage">
           <AstroVerseLogo size={40} />
-          <div className="flex flex-col leading-none">
-            <span className="font-display text-xl font-semibold tracking-wide text-sage">
-              {brandName}
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.22em] text-gold/80 font-medium">
-              Vedic · Astrology
-            </span>
-          </div>
+          <span className="font-display text-xl font-semibold tracking-wide text-sage">
+            {brandName}
+          </span>
         </Link>
 
         {/* Desktop nav */}
