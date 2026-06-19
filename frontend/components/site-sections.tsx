@@ -295,8 +295,7 @@ export function SiteSections() {
           <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Book a Consultation</p>
           <h2 className="mt-2 font-display text-3xl text-sage">Choose your service &amp; proceed</h2>
           <p className="mt-2 text-sm text-sage/65">
-            Select a service on the left — the booking form on the right will load with that service pre-selected.
-            Fill your details and pay securely via Razorpay.
+            Select a service on the left — the booking form updates instantly. Fill your details and pay securely via Razorpay.
           </p>
         </div>
 
@@ -359,10 +358,9 @@ export function SiteSections() {
             </div>
           </div>
 
-          {/* ── Right: booking form ── */}
+          {/* ── Right: booking form — no key prop, no remount ── */}
           <div>
             <BookingForm
-              key={selectedServiceId ?? config.services[0]?.id ?? "default"}
               config={config}
               initialServiceId={selectedServiceId ?? config.services[0]?.id}
             />
