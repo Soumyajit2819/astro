@@ -84,7 +84,6 @@ export function SiteSections() {
       <Navbar brandName={config.brandName} />
       <main>
         <HeroSection />
-        <ServicesSection />
         <ContactSection />
         <FeedbackSection />
         <FaqSection />
@@ -286,33 +285,90 @@ export function SiteSections() {
   }
 
   /* ═══════════════════════════════════════════════════════════
-     CONTACT + BOOKING FORM
+     CONTACT + BOOKING — services left, form right
+     User picks a service on the left → form on right updates
   ═══════════════════════════════════════════════════════════ */
   function ContactSection() {
     return (
       <section id="contact" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="space-y-6">
-            <SectionHeading
-              eyebrow="Contact"
-              title="Complete payment, then proceed to astrologer confirmation"
-              description="The QR reflects the chosen service amount. After the client marks payment complete and proceeds, the astrologer gets a ready confirmation message."
-            />
-            <div className="rounded-[2rem] border border-sage/10 bg-white/75 p-6 text-sage/80 shadow-glow">
-              <p>Phone: {mainAstrologer.phone}</p>
-              <p className="mt-3">WhatsApp: +{mainAstrologer.whatsapp}</p>
-              <p className="mt-3">UPI ID: {mainAstrologer.upiId}</p>
-              <p className="mt-3">Address: {mainAstrologer.address}</p>
+        <div className="mb-10">
+          <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Book a Consultation</p>
+          <h2 className="mt-2 font-display text-3xl text-sage">Choose your service &amp; proceed</h2>
+          <p className="mt-2 text-sm text-sage/65">
+            Select a service on the left — the booking form on the right will load with that service pre-selected.
+            Fill your details and pay securely via Razorpay.
+          </p>
+        </div>
+
+        <div id="booking" className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+
+          {/* ── Left: service picker ── */}
+          <div className="flex flex-col gap-4">
+            {config.services.map((service) => {
+              const discounted =
+                (service.discountPercent ?? 0) > 0
+                  ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
+                  : service.price;
+              const isSelected = (selectedServiceId ?? config.services[0]?.id) === service.id;
+
+              return (
+                <button
+                  key={service.id}
+                  type="button"
+                  onClick={() => setSelectedServiceId(service.id)}
+                  className={`w-full rounded-[2rem] border p-5 text-left transition-all shadow-glow ${
+                    isSelected
+                      ? "border-sage bg-sage/8 ring-2 ring-sage/20"
+                      : "border-sage/10 bg-white/80 hover:border-sage/30"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-xs uppercase tracking-[0.25em] text-gold font-medium">{service.type}</p>
+                      <h3 className="mt-1.5 font-display text-lg text-sage">{service.name}</h3>
+                      <p className="mt-1 text-xs leading-5 text-sage/65">{service.description}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {discounted < service.price ? (
+                        <>
+                          <p className="text-xs text-sage/40 line-through">Rs. {service.price}</p>
+                          <p className="font-display text-xl font-semibold text-sage">Rs. {discounted}</p>
+                        </>
+                      ) : (
+                        <p className="font-display text-xl font-semibold text-sage">Rs. {service.price}</p>
+                      )}
+                    </div>
+                  </div>
+                  {/* Selected indicator */}
+                  <div className={`mt-3 flex items-center gap-2 text-xs font-semibold transition-all ${
+                    isSelected ? "text-sage" : "text-sage/40"
+                  }`}>
+                    <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-sage" : "bg-sage/25"}`} />
+                    {isSelected ? "Selected — fill details on the right" : "Click to select"}
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Contact info below services */}
+            <div className="rounded-[1.5rem] border border-sage/10 bg-white/70 p-5 text-sm text-sage/75">
+              <p className="font-semibold text-sage mb-2">Need help choosing?</p>
+              <p>📱 Phone: {mainAstrologer.phone}</p>
+              <p className="mt-1">💬 WhatsApp: +{mainAstrologer.whatsapp}</p>
+              <p className="mt-1">📍 {mainAstrologer.address}</p>
             </div>
           </div>
-          <div id="booking">
+
+          {/* ── Right: booking form ── */}
+          <div>
             <BookingForm
-              key={selectedServiceId ?? "default"}
+              key={selectedServiceId ?? config.services[0]?.id ?? "default"}
               config={config}
-              initialServiceId={selectedServiceId}
+              initialServiceId={selectedServiceId ?? config.services[0]?.id}
             />
           </div>
         </div>
+
         {loading ? <p className="mt-6 text-sm text-sage/60">Loading live content from Supabase...</p> : null}
         {error   ? <p className="mt-3 text-sm text-ember">Supabase load issue: {error}</p> : null}
       </section>
