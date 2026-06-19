@@ -82,6 +82,13 @@ export function BookingForm({
 }) {
   const [step, setStep] = useState<"form" | "paying" | "success">("form");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [successData, setSuccessData] = useState<{
+    serviceName: string;
+    amount: number;
+    paymentId: string;
+    userName: string;
+    whatsappUrl: string;
+  } | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponItem | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -258,29 +265,35 @@ export function BookingForm({
 
               /* 5. Open WhatsApp with booking details */
               const lines = [
-                `Hello ${mainAstrologer.name},`,
-                `✅ Razorpay payment confirmed for: ${service.name}`,
-                `Amount paid: Rs. ${finalPrice}`,
-                ...(totalSavings > 0 ? [`Original: Rs. ${basePrice} | Saved: Rs. ${totalSavings}`] : []),
-                ...(appliedCoupon ? [`Coupon: ${appliedCoupon.code} (${appliedCoupon.discountPercent}% off)`] : []),
-                `Payment ID: ${response.razorpay_payment_id}`,
-                `Order ID: ${response.razorpay_order_id}`,
+                `🙏 *New Booking — AstroVerse*`,
+                ``,
+                `✅ Payment confirmed via Razorpay`,
+                ``,
+                `*Service:* ${service.name}`,
+                `*Amount Paid:* Rs. ${finalPrice}${totalSavings > 0 ? ` _(saved Rs. ${totalSavings})_` : ""}`,
+                ...(appliedCoupon ? [`*Coupon Used:* ${appliedCoupon.code} (${appliedCoupon.discountPercent}% off)`] : []),
+                `*Payment ID:* ${response.razorpay_payment_id}`,
+                ``,
+                `*Client Details*`,
                 `Name: ${values.fullName}`,
                 `Phone: ${values.phoneNumber}`,
                 `Email: ${values.email}`,
-                ...(service.type !== "class"
-                  ? [`DOB: ${values.dob}`, `TOB: ${values.tob}`, `POB: ${values.pob}`]
-                  : []),
-                `Message: ${values.message || "N/A"}`,
-                "Payment is verified. Please follow up with the client.",
+                ...(service.type !== "class" ? [
+                  ``,
+                  `*Birth Details*`,
+                  `Date of Birth: ${values.dob}`,
+                  `Time of Birth: ${values.tob}`,
+                  `Place of Birth: ${values.pob}`,
+                ] : []),
+                ...(values.message ? [``, `*Message from client:* ${values.message}`] : []),
+                ``,
+                `_Payment verified. Please reach out to the client to schedule the consultation._`,
               ];
-              window.open(
-                `https://wa.me/${mainAstrologer.whatsapp}?text=${encodeURIComponent(lines.join("\n"))}`,
-                "_blank",
-                "noopener,noreferrer"
-              );
 
-              /* 6. Reset */
+              const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${encodeURIComponent(lines.join("\n"))}`;
+              window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+
+              /* 6. Reset + show success */
               skipDraftRef.current = true;
               window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
               setAppliedCoupon(null);
@@ -291,8 +304,14 @@ export function BookingForm({
                 selectedServiceId: config.services[0]?.id ?? "",
                 message: "",
               });
+              setSuccessData({
+                serviceName: service.name,
+                amount: finalPrice,
+                paymentId: response.razorpay_payment_id,
+                userName: values.fullName,
+                whatsappUrl,
+              });
               setStep("success");
-              setStatusMsg(`Payment of Rs. ${finalPrice} confirmed. Payment ID: ${response.razorpay_payment_id}. WhatsApp has been opened — the astrologer will reach you shortly.`);
               resolve();
             } catch (e) {
               reject(e);
@@ -329,19 +348,70 @@ export function BookingForm({
       </div>
 
       {/* Success state */}
-      {step === "success" && statusMsg ? (
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-            <div>
-              <p className="font-semibold text-emerald-800">Booking confirmed!</p>
-              <p className="mt-1">{statusMsg}</p>
-              <p className="mt-3 flex items-center gap-2 font-medium text-emerald-700">
-                <ShieldCheck className="h-4 w-4" />
-                Our team will reach you soon.
+      {step === "success" && successData ? (
+        <div className="flex flex-col gap-6">
+          {/* Confirmation card */}
+          <div className="rounded-[2rem] border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-8 text-center shadow-glow">
+            {/* Icon */}
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+            </div>
+
+            {/* Heading */}
+            <h3 className="font-display text-2xl font-semibold text-sage">
+              Thank you, {successData.userName.split(" ")[0]}! 🙏
+            </h3>
+            <p className="mt-2 text-sm text-sage/70">
+              Your booking for <strong>{successData.serviceName}</strong> is confirmed.
+            </p>
+
+            {/* Payment details */}
+            <div className="mt-5 rounded-[1.5rem] border border-sage/10 bg-white/80 px-6 py-4 text-sm text-sage/80">
+              <p>Amount paid: <strong className="text-sage">Rs. {successData.amount}</strong></p>
+              <p className="mt-1 text-xs text-sage/55">Payment ID: {successData.paymentId}</p>
+            </div>
+
+            {/* Well-wishing message */}
+            <div className="mt-5 rounded-[1.5rem] border border-gold/20 bg-gold/8 px-6 py-5 text-left">
+              <p className="text-sm leading-7 text-sage/80">
+                May the stars guide you toward clarity and purpose. Your consultation has been received,
+                and our astrologer will connect with you shortly to schedule your session.
+              </p>
+              <p className="mt-3 text-sm font-medium text-sage">
+                Wishing you light, wisdom, and positive energy on your journey. ✨
               </p>
             </div>
+
+            {/* WhatsApp CTA — in case it didn't auto-open */}
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <a
+                href={successData.whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1ebe5d]"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Open WhatsApp Chat
+              </a>
+              <button
+                type="button"
+                onClick={() => { setStep("form"); setSuccessData(null); setStatusMsg(null); }}
+                className="inline-flex items-center justify-center rounded-full border border-sage/20 bg-white px-6 py-3 text-sm font-semibold text-sage transition hover:bg-ivory"
+              >
+                Book Another Service
+              </button>
+            </div>
+
+            <p className="mt-4 text-xs text-sage/50">
+              If WhatsApp did not open automatically, click the button above to send your booking details to the astrologer.
+            </p>
           </div>
+
+          {/* ShieldCheck note */}
+          <p className="flex items-center justify-center gap-2 text-xs text-sage/55">
+            <ShieldCheck className="h-4 w-4 text-gold" />
+            Payment verified and secured by Razorpay
+          </p>
         </div>
       ) : (
         <form className="grid gap-5" onSubmit={onSubmit}>
