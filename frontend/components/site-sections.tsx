@@ -183,7 +183,7 @@ export function SiteSections() {
             {/* Stat pills */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                [mainAstrologer.experience.match(/\d+\+?/)?.[0] ?? "—", "Years\nguidance"],
+                ["4+", "Years\nguidance"],
                 [`${config.services.length}+`, "Services\navailable"],
                 ["100%", "Personally\nguided"]
               ].map(([value, label]) => (
@@ -306,7 +306,11 @@ export function SiteSections() {
             </div>
           </div>
           <div id="booking">
-            <BookingForm config={config} initialServiceId={selectedServiceId} />
+            <BookingForm
+              key={selectedServiceId ?? "default"}
+              config={config}
+              initialServiceId={selectedServiceId}
+            />
           </div>
         </div>
         {loading ? <p className="mt-6 text-sm text-sage/60">Loading live content from Supabase...</p> : null}
