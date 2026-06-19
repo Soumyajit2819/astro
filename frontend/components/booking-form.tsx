@@ -108,10 +108,10 @@ export function BookingForm({
     },
   });
 
-  /* Sync initialServiceId from parent "Book now" click */
+  /* Sync initialServiceId from parent "Book now" click — force update */
   useEffect(() => {
-    if (initialServiceId) {
-      form.setValue("selectedServiceId", initialServiceId, { shouldValidate: false });
+    if (initialServiceId && initialServiceId !== form.getValues("selectedServiceId")) {
+      form.setValue("selectedServiceId", initialServiceId, { shouldValidate: true, shouldDirty: true });
       setAppliedCoupon(null);
       setCouponCode("");
       setCouponError(null);

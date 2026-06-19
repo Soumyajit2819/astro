@@ -83,7 +83,7 @@ export const defaultSiteConfig: SiteConfig = {
       name: "Arijit Talukdar",
       title: "Astrologer and Spiritual Guide",
       bio: "Offers practical astrology guidance, spiritual support, and a simple personal booking experience.",
-      experience: "12+ years of experience in consultations and teaching",
+      experience: "4+ years of experience in Vedic astrology, numerology & spiritual guidance",
       phone: "+91 98765 43210",
       whatsapp: "919876543210",
       photoUrl: "/astrologer.jpeg",
