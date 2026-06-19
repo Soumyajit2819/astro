@@ -43,3 +43,11 @@ alter table public.payment_proofs
   add column if not exists original_amount numeric,
   add column if not exists coupon_code text,
   add column if not exists coupon_discount_percent numeric(5,2);
+
+-- ============================================================
+-- Migration: add Razorpay columns to existing payment_proofs
+-- Run this if you already created the table without them.
+-- ============================================================
+alter table public.payment_proofs
+  add column if not exists razorpay_order_id text,
+  add column if not exists razorpay_payment_id text;

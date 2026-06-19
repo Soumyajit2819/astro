@@ -86,7 +86,7 @@ export const defaultSiteConfig: SiteConfig = {
       experience: "12+ years of experience in consultations and teaching",
       phone: "+91 98765 43210",
       whatsapp: "919876543210",
-      photoUrl: "/astrologer.jpg",
+      photoUrl: "/astrologer.jpeg",
       upiId: "7584972080jio@jio",
       instagram: "https://instagram.com",
       youtube: "https://youtube.com",

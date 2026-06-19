@@ -1,19 +1,52 @@
 "use client";
 
 import type { SiteConfig } from "@/lib/site-config";
-import { insertRows, uploadPublicFile } from "@/lib/supabase";
+import { insertRows } from "@/lib/supabase";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle2, Copy, Loader2, MessageCircle, QrCode, ShieldCheck, Tag, Upload, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  MessageCircle,
+  ShieldCheck,
+  Tag,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import type { CouponItem, ServiceItem } from "@/lib/site-config";
 
 const BOOKING_DRAFT_STORAGE_KEY = "astro-booking-draft";
-// Fallback constants — used only if Supabase astrologer row has no upi_id / name
-const FALLBACK_MERCHANT_NAME = "Arijit Talukdar";
-const FALLBACK_UPI_ID = "7584972080jio@jio";
 
+/* ── Razorpay types ── */
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill: { name: string; email: string; contact: string };
+  theme: { color: string };
+  handler: (response: RazorpayResponse) => void;
+  modal?: { ondismiss?: () => void };
+}
+interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+interface RazorpayInstance {
+  open: () => void;
+}
+
+/* ── Schema ── */
 const createBookingSchema = (services: ServiceItem[]) =>
   z
     .object({
@@ -24,364 +57,262 @@ const createBookingSchema = (services: ServiceItem[]) =>
       tob: z.string().optional(),
       pob: z.string().optional(),
       selectedServiceId: z.string().min(1, "Please select a service."),
-      paymentScreenshot: z.custom<FileList | undefined>().optional(),
-      paymentCompleted: z.boolean().refine((value) => value, {
-        message: "Please confirm that the payment is completed before proceeding."
-      }),
-      message: z.string().optional()
+      message: z.string().optional(),
     })
     .superRefine((values, context) => {
-      const selectedService = services.find((service) => service.id === values.selectedServiceId);
-
-      const screenshotFile = values.paymentScreenshot?.item(0);
-      if (!screenshotFile) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["paymentScreenshot"],
-          message: "Upload the payment screenshot before proceeding."
-        });
-      } else if (!screenshotFile.type.startsWith("image/")) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["paymentScreenshot"],
-          message: "Upload a valid image file for payment proof."
-        });
-      }
-
-      if (selectedService?.type === "class") {
-        return;
-      }
-
-      if (!values.dob) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["dob"],
-          message: "Date of birth is required."
-        });
-      }
-
-      if (!values.tob) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["tob"],
-          message: "Time of birth is required."
-        });
-      }
-
-      if (!values.pob || values.pob.length < 2) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["pob"],
-          message: "Place of birth is required."
-        });
-      }
+      const selectedService = services.find((s) => s.id === values.selectedServiceId);
+      if (selectedService?.type === "class") return;
+      if (!values.dob)
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["dob"], message: "Date of birth is required." });
+      if (!values.tob)
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["tob"], message: "Time of birth is required." });
+      if (!values.pob || values.pob.length < 2)
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ["pob"], message: "Place of birth is required." });
     });
 
 type BookingFormValues = z.infer<ReturnType<typeof createBookingSchema>>;
-type BookingDraft = Omit<BookingFormValues, "paymentScreenshot">;
-
-function buildUpiLink(upiId: string, amount: number) {
-  return `upi://pay?pa=${upiId}&am=${encodeURIComponent(String(amount))}&cu=INR`;
-}
+type BookingDraft = BookingFormValues;
 
 export function BookingForm({
   config,
-  initialServiceId
+  initialServiceId,
 }: {
   config: SiteConfig;
   initialServiceId?: string;
 }) {
-  const [confirmation, setConfirmation] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [step, setStep] = useState<"form" | "paying" | "success">("form");
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponItem | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const skipDraftSyncRef = useRef(false);
+  const skipDraftRef = useRef(false);
 
   const mainAstrologer = config.astrologers[0];
-  // Use the live UPI ID from Supabase; fall back to constant if not configured
-  const paymentUpiId = mainAstrologer?.upiId?.trim() || FALLBACK_UPI_ID;
-  const paymentMerchantName = mainAstrologer?.name?.trim() || FALLBACK_MERCHANT_NAME;
-
   const bookingSchema = useMemo(() => createBookingSchema(config.services), [config.services]);
-
   const defaultServiceId = initialServiceId ?? config.services[0]?.id ?? "";
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
-      fullName: "",
-      phoneNumber: "",
-      email: "",
-      dob: "",
-      tob: "",
-      pob: "",
+      fullName: "", phoneNumber: "", email: "",
+      dob: "", tob: "", pob: "",
       selectedServiceId: defaultServiceId,
-      paymentCompleted: false,
-      message: ""
-    }
+      message: "",
+    },
   });
 
-  // When parent passes a new initialServiceId (e.g. from "Choose this" click), update the field
+  /* Sync initialServiceId from parent "Book now" click */
   useEffect(() => {
     if (initialServiceId) {
       form.setValue("selectedServiceId", initialServiceId, { shouldValidate: false });
       setAppliedCoupon(null);
       setCouponCode("");
       setCouponError(null);
-      form.setValue("paymentCompleted", false, { shouldValidate: false });
     }
   }, [initialServiceId, form]);
 
   const selectedServiceId = form.watch("selectedServiceId");
-  const selectedService = config.services.find((service) => service.id === selectedServiceId) ?? config.services[0];
+  const selectedService =
+    config.services.find((s) => s.id === selectedServiceId) ?? config.services[0];
   const requiresBirthDetails = selectedService?.type !== "class";
-  const paymentScreenshot = form.watch("paymentScreenshot");
 
-  // Price calculation: service discount → coupon discount
+  /* Price calculation */
   const basePrice = selectedService?.price ?? 0;
   const serviceDiscountPct = selectedService?.discountPercent ?? 0;
-  const priceAfterServiceDiscount = serviceDiscountPct > 0
+  const priceAfterService = serviceDiscountPct > 0
     ? Math.round(basePrice * (1 - serviceDiscountPct / 100))
     : basePrice;
-  const couponDiscountPct = appliedCoupon ? appliedCoupon.discountPercent : 0;
+  const couponDiscountPct = appliedCoupon?.discountPercent ?? 0;
   const finalPrice = couponDiscountPct > 0
-    ? Math.round(priceAfterServiceDiscount * (1 - couponDiscountPct / 100))
-    : priceAfterServiceDiscount;
+    ? Math.round(priceAfterService * (1 - couponDiscountPct / 100))
+    : priceAfterService;
   const totalSavings = basePrice - finalPrice;
 
-  const upiLink = useMemo(
-    () => buildUpiLink(paymentUpiId, finalPrice),
-    [paymentUpiId, finalPrice]
-  );
-
-  const qrSource =
-    selectedService?.paymentQrUrl ||
-    `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(upiLink)}`;
-
-  const clearBookingDraft = () => {
-    if (typeof window === "undefined") return;
-    skipDraftSyncRef.current = true;
-    window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
-  };
-
-  // Restore draft on mount
+  /* Draft restore */
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const savedDraft = window.localStorage.getItem(BOOKING_DRAFT_STORAGE_KEY);
-    if (!savedDraft) return;
-
+    const saved = window.localStorage.getItem(BOOKING_DRAFT_STORAGE_KEY);
+    if (!saved) return;
     try {
-      const parsedDraft = JSON.parse(savedDraft) as Partial<BookingDraft>;
-      const hasDraftContent = Boolean(
-        parsedDraft.fullName ||
-          parsedDraft.phoneNumber ||
-          parsedDraft.email ||
-          parsedDraft.dob ||
-          parsedDraft.tob ||
-          parsedDraft.pob ||
-          parsedDraft.message
-      );
-
-      if (!hasDraftContent) {
-        clearBookingDraft();
-        return;
+      const d = JSON.parse(saved) as Partial<BookingDraft>;
+      if (d.fullName || d.email || d.phoneNumber) {
+        form.reset({
+          fullName: d.fullName ?? "",
+          phoneNumber: d.phoneNumber ?? "",
+          email: d.email ?? "",
+          dob: d.dob ?? "",
+          tob: d.tob ?? "",
+          pob: d.pob ?? "",
+          selectedServiceId: d.selectedServiceId ?? defaultServiceId,
+          message: d.message ?? "",
+        });
       }
-
-      form.reset({
-        fullName: parsedDraft.fullName ?? "",
-        phoneNumber: parsedDraft.phoneNumber ?? "",
-        email: parsedDraft.email ?? "",
-        dob: parsedDraft.dob ?? "",
-        tob: parsedDraft.tob ?? "",
-        pob: parsedDraft.pob ?? "",
-        selectedServiceId: parsedDraft.selectedServiceId ?? defaultServiceId,
-        paymentCompleted: false,
-        message: parsedDraft.message ?? ""
-      });
-      setConfirmation(
-        "Your booking details were restored after returning to the page. Please re-upload the screenshot after payment."
-      );
-    } catch {
-      window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
-    }
+    } catch { window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-save draft to localStorage
+  /* Draft auto-save */
   useEffect(() => {
-    const subscription = form.watch((values) => {
+    const sub = form.watch((values) => {
       if (typeof window === "undefined") return;
-      if (skipDraftSyncRef.current) {
-        skipDraftSyncRef.current = false;
-        return;
+      if (skipDraftRef.current) { skipDraftRef.current = false; return; }
+      if (values.fullName || values.email || values.phoneNumber) {
+        window.localStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify(values));
       }
-
-      const draft: BookingDraft = {
-        fullName: values.fullName ?? "",
-        phoneNumber: values.phoneNumber ?? "",
-        email: values.email ?? "",
-        dob: values.dob ?? "",
-        tob: values.tob ?? "",
-        pob: values.pob ?? "",
-        selectedServiceId: values.selectedServiceId ?? defaultServiceId,
-        paymentCompleted: false,
-        message: values.message ?? ""
-      };
-
-      const hasDraftContent = Boolean(
-        draft.fullName || draft.phoneNumber || draft.email || draft.dob || draft.tob || draft.pob || draft.message
-      );
-
-      if (!hasDraftContent) {
-        window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
-        return;
-      }
-
-      window.localStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify(draft));
     });
+    return () => sub.unsubscribe();
+  }, [form]);
 
-    return () => subscription.unsubscribe();
-  }, [form, defaultServiceId]);
+  /* Load Razorpay script once */
+  useEffect(() => {
+    if (document.getElementById("razorpay-script")) return;
+    const script = document.createElement("script");
+    script.id = "razorpay-script";
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    const service = config.services.find((item) => item.id === values.selectedServiceId);
-    if (!service) {
-      setConfirmation("Please select a valid service.");
-      return;
-    }
-
-    const screenshotFile = values.paymentScreenshot?.item(0);
-    if (!screenshotFile) {
-      setConfirmation("Upload the payment screenshot before proceeding.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setConfirmation(null);
-
-    try {
-      const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim() || "astrologer-images";
-      const extension = screenshotFile.name.split(".").pop() || "jpg";
-      const safePhone = values.phoneNumber.replace(/\D/g, "") || "client";
-      const path = `payment-proofs/${Date.now()}-${safePhone}.${extension}`;
-      const screenshotUrl = await uploadPublicFile(bucket, path, screenshotFile);
-      setProofUrl(screenshotUrl);
-
-      await insertRows("payment_proofs", [
-        {
-          customer_name: values.fullName,
-          email: values.email,
-          phone_number: values.phoneNumber,
-          service_name: service.name,
-          amount: finalPrice,
-          original_amount: basePrice,
-          coupon_code: appliedCoupon?.code ?? null,
-          coupon_discount_percent: appliedCoupon?.discountPercent ?? null,
-          payment_screenshot_url: screenshotUrl,
-          notes: values.message || "",
-          status: "pending"
-        }
-      ]);
-
-      const details = [
-        `Hello ${paymentMerchantName},`,
-        `Payment done confirmation for: ${service.name}`,
-        `Amount paid: Rs. ${finalPrice}`,
-        ...(totalSavings > 0 ? [`Original price: Rs. ${basePrice} | Savings: Rs. ${totalSavings}`] : []),
-        ...(appliedCoupon
-          ? [`Coupon applied: ${appliedCoupon.code} (${appliedCoupon.discountPercent}% extra off)`]
-          : []),
-        "Payment Screenshot Link:",
-        screenshotUrl,
-        `Name: ${values.fullName}`,
-        `Phone: ${values.phoneNumber}`,
-        `Email: ${values.email}`
-      ];
-
-      if (service.type !== "class") {
-        details.push(`DOB: ${values.dob}`, `TOB: ${values.tob}`, `POB: ${values.pob}`);
-      }
-
-      details.push(
-        `Message: ${values.message || "N/A"}`,
-        "Client has uploaded the payment screenshot. Please verify and follow up with the next step."
-      );
-
-      const whatsappText = encodeURIComponent(details.join("\n"));
-      const whatsappUrl = `https://wa.me/${mainAstrologer.whatsapp}?text=${whatsappText}`;
-      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-
-      clearBookingDraft();
-      setAppliedCoupon(null);
-      setCouponCode("");
-      form.reset({
-        fullName: "",
-        phoneNumber: "",
-        email: "",
-        dob: "",
-        tob: "",
-        pob: "",
-        selectedServiceId: config.services[0]?.id ?? "",
-        paymentCompleted: false,
-        message: ""
-      });
-
-      setConfirmation(
-        `Payment proof uploaded for Rs. ${finalPrice}${totalSavings > 0 ? ` (saved Rs. ${totalSavings})` : ""}. If WhatsApp does not open automatically, use the buttons below to open or copy the screenshot link and send it manually.`
-      );
-    } catch (uploadError) {
-      setProofUrl(null);
-      setConfirmation(uploadError instanceof Error ? uploadError.message : "Payment screenshot upload failed.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  });
-
-  const copyUpiId = async () => {
-    await navigator.clipboard.writeText(paymentUpiId);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
-  };
-
+  /* Coupon helpers */
   const applyCoupon = () => {
     setCouponError(null);
-    const trimmedCode = couponCode.trim().toUpperCase();
-    if (!trimmedCode) {
-      setCouponError("Enter a coupon code first.");
-      return;
-    }
-
-    const match = (config.coupons ?? []).find(
-      (c) => c.code.toUpperCase() === trimmedCode && c.active
-    );
-
-    if (!match) {
-      setAppliedCoupon(null);
-      setCouponError("Invalid or expired coupon code.");
-      return;
-    }
-
+    const code = couponCode.trim().toUpperCase();
+    if (!code) { setCouponError("Enter a coupon code first."); return; }
+    const match = (config.coupons ?? []).find((c) => c.code.toUpperCase() === code && c.active);
+    if (!match) { setAppliedCoupon(null); setCouponError("Invalid or expired coupon code."); return; }
     setAppliedCoupon(match);
-    form.setValue("paymentCompleted", false, { shouldValidate: false });
   };
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponCode(""); setCouponError(null); };
 
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponCode("");
-    setCouponError(null);
-    form.setValue("paymentCompleted", false, { shouldValidate: false });
-  };
+  /* Main submit — create Razorpay order → open checkout → verify → save to Supabase → WhatsApp */
+  const onSubmit = form.handleSubmit(async (values) => {
+    const service = config.services.find((s) => s.id === values.selectedServiceId);
+    if (!service) return;
 
-  const copyProofLink = async () => {
-    if (!proofUrl) return;
-    await navigator.clipboard.writeText(proofUrl);
-    setConfirmation(
-      "Screenshot link copied. Paste it directly into WhatsApp if the link is not visible in the draft."
-    );
-  };
+    setStep("paying");
+    setStatusMsg(null);
+
+    try {
+      /* 1. Create order on server */
+      const orderRes = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: finalPrice,
+          currency: "INR",
+          receipt: `booking_${Date.now()}`,
+        }),
+      });
+      if (!orderRes.ok) {
+        const err = await orderRes.json();
+        throw new Error(err.error ?? "Failed to create payment order.");
+      }
+      const order = await orderRes.json();
+
+      /* 2. Open Razorpay checkout */
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!keyId || typeof window.Razorpay === "undefined") {
+        throw new Error("Razorpay is not loaded. Please refresh and try again.");
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: keyId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "AstroVerse",
+          description: service.name,
+          order_id: order.id,
+          prefill: {
+            name: values.fullName,
+            email: values.email,
+            contact: values.phoneNumber,
+          },
+          theme: { color: "#52624f" },
+          handler: async (response: RazorpayResponse) => {
+            try {
+              /* 3. Verify signature on server */
+              const verifyRes = await fetch("/api/payments/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(response),
+              });
+              const verified = await verifyRes.json();
+              if (!verified.verified) throw new Error("Payment verification failed.");
+
+              /* 4. Save booking to Supabase */
+              await insertRows("payment_proofs", [{
+                customer_name: values.fullName,
+                email: values.email,
+                phone_number: values.phoneNumber,
+                service_name: service.name,
+                amount: finalPrice,
+                original_amount: basePrice,
+                coupon_code: appliedCoupon?.code ?? null,
+                coupon_discount_percent: appliedCoupon?.discountPercent ?? null,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                notes: values.message || "",
+                status: "paid",
+              }]);
+
+              /* 5. Open WhatsApp with booking details */
+              const lines = [
+                `Hello ${mainAstrologer.name},`,
+                `✅ Razorpay payment confirmed for: ${service.name}`,
+                `Amount paid: Rs. ${finalPrice}`,
+                ...(totalSavings > 0 ? [`Original: Rs. ${basePrice} | Saved: Rs. ${totalSavings}`] : []),
+                ...(appliedCoupon ? [`Coupon: ${appliedCoupon.code} (${appliedCoupon.discountPercent}% off)`] : []),
+                `Payment ID: ${response.razorpay_payment_id}`,
+                `Order ID: ${response.razorpay_order_id}`,
+                `Name: ${values.fullName}`,
+                `Phone: ${values.phoneNumber}`,
+                `Email: ${values.email}`,
+                ...(service.type !== "class"
+                  ? [`DOB: ${values.dob}`, `TOB: ${values.tob}`, `POB: ${values.pob}`]
+                  : []),
+                `Message: ${values.message || "N/A"}`,
+                "Payment is verified. Please follow up with the client.",
+              ];
+              window.open(
+                `https://wa.me/${mainAstrologer.whatsapp}?text=${encodeURIComponent(lines.join("\n"))}`,
+                "_blank",
+                "noopener,noreferrer"
+              );
+
+              /* 6. Reset */
+              skipDraftRef.current = true;
+              window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY);
+              setAppliedCoupon(null);
+              setCouponCode("");
+              form.reset({
+                fullName: "", phoneNumber: "", email: "",
+                dob: "", tob: "", pob: "",
+                selectedServiceId: config.services[0]?.id ?? "",
+                message: "",
+              });
+              setStep("success");
+              setStatusMsg(`Payment of Rs. ${finalPrice} confirmed. Payment ID: ${response.razorpay_payment_id}. WhatsApp has been opened — the astrologer will reach you shortly.`);
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              setStep("form");
+              setStatusMsg("Payment was cancelled. You can try again.");
+              resolve();
+            },
+          },
+        });
+        rzp.open();
+      });
+    } catch (err) {
+      setStep("form");
+      setStatusMsg(err instanceof Error ? err.message : "Payment failed. Please try again.");
+    }
+  });
 
   const inputClass =
     "mt-2 w-full rounded-2xl border border-sage/12 bg-white px-4 py-3 text-sm text-sage outline-none transition placeholder:text-sage/40 focus:border-gold";
@@ -389,79 +320,53 @@ export function BookingForm({
   return (
     <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow backdrop-blur sm:p-8">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h3 className="font-display text-2xl font-semibold text-sage">Consultation Booking &amp; Payment</h3>
-          <p className="mt-2 text-sm text-sage/75">
-            Fill every required detail, pay the exact service amount, confirm payment completion, then proceed to
-            astrologer confirmation.
-          </p>
-        </div>
-        <div className="rounded-3xl border border-gold/25 bg-gold/10 p-4 text-sm text-sage">
-          <p className="font-semibold">Payment Details</p>
-          <p className="mt-2 text-sage/75">Merchant: {paymentMerchantName}</p>
-          <div className="mt-2 flex items-center gap-3">
-            <span>{paymentUpiId}</span>
-            <button
-              type="button"
-              onClick={copyUpiId}
-              className="inline-flex items-center gap-1 rounded-full border border-sage/15 px-3 py-1 text-xs"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
+      <div className="mb-6">
+        <h3 className="font-display text-2xl font-semibold text-sage">Consultation Booking</h3>
+        <p className="mt-2 text-sm text-sage/75">
+          Fill your details, apply a coupon if you have one, then pay securely via Razorpay.
+          The astrologer is notified on WhatsApp automatically after payment.
+        </p>
       </div>
 
-      <form className="grid gap-5" onSubmit={onSubmit}>
-        <div className="mb-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          {/* Flow instructions */}
-          <div className="rounded-[1.5rem] border border-sage/10 bg-ivory/70 p-5">
-            <p className="text-sm uppercase tracking-[0.25em] text-gold">Required Flow</p>
-            <div className="mt-4 grid gap-3 text-sm text-sage/80">
-              <p>1. Select your service below — the QR and amount update automatically.</p>
-              <p>2. Pay the exact amount shown using the QR code or copied UPI ID.</p>
-              <p>3. "Open UPI App" opens your payment app pre-filled with the amount.</p>
-              <p>
-                4. After payment, upload the screenshot and complete your details
-                {requiresBirthDetails ? " including birth details" : ""}.
-              </p>
-              <p>
-                5. Tick the confirmation box and click the button — the astrologer receives your booking details and
-                payment proof on WhatsApp.
+      {/* Success state */}
+      {step === "success" && statusMsg ? (
+        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-800">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            <div>
+              <p className="font-semibold text-emerald-800">Booking confirmed!</p>
+              <p className="mt-1">{statusMsg}</p>
+              <p className="mt-3 flex items-center gap-2 font-medium text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+                Our team will reach you soon.
               </p>
             </div>
           </div>
+        </div>
+      ) : (
+        <form className="grid gap-5" onSubmit={onSubmit}>
 
-          {/* Service selector + QR + payment */}
-          <div className="rounded-[1.5rem] border border-gold/25 bg-gold/10 p-5">
+          {/* Service + price + coupon */}
+          <div className="rounded-[1.5rem] border border-gold/25 bg-gold/8 p-5">
             <label className="text-sm font-medium text-sage">
               Select Service <span className="text-ember">*</span>
               <select
                 className={inputClass}
                 {...form.register("selectedServiceId", {
                   onChange: () => {
-                    form.setValue("paymentCompleted", false, { shouldValidate: true });
-                    setConfirmation(null);
                     setAppliedCoupon(null);
                     setCouponCode("");
                     setCouponError(null);
-                  }
+                  },
                 })}
               >
                 {config.services.map((service) => {
-                  const discountedPrice =
-                    (service.discountPercent ?? 0) > 0
-                      ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
-                      : service.price;
-                  const label =
-                    discountedPrice < service.price
-                      ? `${service.name} - Rs. ${discountedPrice} (was Rs. ${service.price})`
-                      : `${service.name} - Rs. ${service.price}`;
+                  const dp = (service.discountPercent ?? 0) > 0
+                    ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
+                    : service.price;
                   return (
                     <option key={service.id} value={service.id}>
-                      {label}
+                      {service.name} — Rs. {dp}{dp < service.price ? ` (was Rs. ${service.price})` : ""}
                     </option>
                   );
                 })}
@@ -469,98 +374,43 @@ export function BookingForm({
             </label>
             <FieldError message={form.formState.errors.selectedServiceId?.message} />
 
-            <div className="mt-4 flex items-center gap-2 text-gold">
-              <QrCode className="h-4 w-4" />
-              <p className="text-sm font-semibold uppercase tracking-[0.2em]">
-                Dynamic Payment QR <span className="text-ember">*</span>
-              </p>
-            </div>
-            <div className="mt-3 rounded-[1.5rem] bg-white p-4">
-              <img
-                src={qrSource}
-                alt={`Payment QR for Rs. ${finalPrice}`}
-                className="mx-auto h-56 w-56 rounded-2xl object-contain"
-              />
-            </div>
-
-            <div className="mt-4 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4 text-sm text-sage">
-              <p className="font-semibold">Preferred payment method</p>
-              <p className="mt-2 text-sage/75">
-                Scan the QR above or copy the UPI ID and pay the exact amount in BHIM, PhonePe, GPay, or Paytm.
-              </p>
-              <p className="mt-2 text-sage/75">Merchant name: {paymentMerchantName}</p>
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-sage/10 bg-ivory/70 px-4 py-3">
-                <span className="break-all font-medium">{paymentUpiId}</span>
-                <button
-                  type="button"
-                  onClick={copyUpiId}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sage/15 px-3 py-1 text-xs"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
+            {/* Price display */}
+            <div className="mt-4">
+              {totalSavings > 0 ? (
+                <div>
+                  <p className="text-sm text-sage/50 line-through">Rs. {basePrice}</p>
+                  <p className="font-display text-3xl font-semibold text-sage">Rs. {finalPrice}</p>
+                  <p className="mt-1 text-sm font-medium text-emerald-600">
+                    You save Rs. {totalSavings}
+                    {serviceDiscountPct > 0 && ` (${serviceDiscountPct}% service`}
+                    {serviceDiscountPct > 0 && couponDiscountPct > 0 && ` + ${couponDiscountPct}% coupon`}
+                    {serviceDiscountPct > 0 && ")"}
+                    {serviceDiscountPct === 0 && couponDiscountPct > 0 && ` (${couponDiscountPct}% coupon)`}
+                  </p>
+                </div>
+              ) : (
+                <p className="font-display text-3xl font-semibold text-sage">Rs. {finalPrice}</p>
+              )}
+              <p className="mt-1 text-xs text-sage/60">{selectedService?.description}</p>
             </div>
 
-            <a
-              href={upiLink}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-sage/15 bg-white px-4 py-3 text-sm font-semibold text-sage"
-            >
-              Open UPI App
-            </a>
-            <p className="mt-2 text-xs text-sage/65">
-              Opens your UPI app pre-filled with the service amount. If it doesn't work, use the QR or UPI ID
-              instead.
-            </p>
-            <p className="mt-2 rounded-2xl border border-ember/15 bg-ember/5 px-4 py-3 text-xs text-ember">
-              BHIM Pay users: if you face issues, try PhonePe, GPay, or Paytm instead.
-            </p>
-
-            {/* Service name + price breakdown */}
-            <p className="mt-4 text-sm text-sage/75">
-              Selected service:{" "}
-              <span className="font-semibold text-sage">{selectedService?.name}</span>
-            </p>
-
-            {totalSavings > 0 ? (
-              <div className="mt-2">
-                <p className="text-sm text-sage/60 line-through">Rs. {basePrice}</p>
-                <p className="font-display text-3xl text-sage">Rs. {finalPrice}</p>
-                <p className="mt-1 text-sm font-medium text-emerald-600">
-                  You save Rs. {totalSavings}
-                  {serviceDiscountPct > 0 && ` (${serviceDiscountPct}% service discount`}
-                  {serviceDiscountPct > 0 && couponDiscountPct > 0 && ` + ${couponDiscountPct}% coupon`}
-                  {serviceDiscountPct > 0 && `)`}
-                  {serviceDiscountPct === 0 && couponDiscountPct > 0 && ` (${couponDiscountPct}% coupon)`}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-2 font-display text-3xl text-sage">Rs. {finalPrice}</p>
-            )}
-
-            {/* Coupon input */}
+            {/* Coupon */}
             <div className="mt-4 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4">
               <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-sage">
-                <Tag className="h-4 w-4 text-gold" />
-                Have a coupon code?
+                <Tag className="h-4 w-4 text-gold" /> Have a coupon code?
               </p>
               {appliedCoupon ? (
                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                   <div>
                     <p className="text-sm font-semibold text-emerald-700">
-                      {appliedCoupon.code} applied — {appliedCoupon.discountPercent}% extra off
+                      {appliedCoupon.code} — {appliedCoupon.discountPercent}% off applied
                     </p>
                     {appliedCoupon.description ? (
                       <p className="text-xs text-emerald-600">{appliedCoupon.description}</p>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeCoupon}
-                    className="inline-flex items-center gap-1 rounded-full border border-ember/30 bg-white px-3 py-1 text-xs font-medium text-ember"
-                  >
+                  <button type="button" onClick={removeCoupon}
+                    className="inline-flex items-center gap-1 rounded-full border border-ember/30 bg-white px-3 py-1 text-xs font-medium text-ember">
                     <XCircle className="h-3.5 w-3.5" /> Remove
                   </button>
                 </div>
@@ -569,218 +419,104 @@ export function BookingForm({
                   <input
                     type="text"
                     value={couponCode}
-                    onChange={(e) => {
-                      setCouponCode(e.target.value.toUpperCase());
-                      setCouponError(null);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        applyCoupon();
-                      }
-                    }}
+                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyCoupon(); } }}
                     placeholder="Enter coupon code"
                     className="flex-1 rounded-2xl border border-sage/12 bg-white px-4 py-2 text-sm text-sage outline-none placeholder:text-sage/40 focus:border-gold"
                   />
-                  <button
-                    type="button"
-                    onClick={applyCoupon}
-                    className="inline-flex items-center gap-1 rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory"
-                  >
+                  <button type="button" onClick={applyCoupon}
+                    className="inline-flex items-center rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory">
                     Apply
                   </button>
                 </div>
               )}
               {couponError ? <p className="mt-2 text-xs text-ember">{couponError}</p> : null}
             </div>
-
-            <p className="mt-3 text-sm text-sage/75">{selectedService?.description}</p>
-            <p className="mt-2 text-xs font-medium text-ember">
-              Pay exactly Rs. {finalPrice}. Screenshot proof is required.
-            </p>
           </div>
-        </div>
 
-        {/* Personal details */}
-        <RequiredInput
-          label="Full Name"
-          placeholder="Enter your full name"
-          register={form.register("fullName")}
-          className={inputClass}
-        />
-        <FieldError message={form.formState.errors.fullName?.message} />
+          {/* Personal details */}
+          <RequiredInput label="Full Name" placeholder="Enter your full name"
+            register={form.register("fullName")} className={inputClass} />
+          <FieldError message={form.formState.errors.fullName?.message} />
 
-        <RequiredInput
-          label="Email"
-          placeholder="Enter your email address"
-          register={form.register("email")}
-          className={inputClass}
-        />
-        <FieldError message={form.formState.errors.email?.message} />
+          <RequiredInput label="Email" placeholder="Enter your email address"
+            register={form.register("email")} className={inputClass} />
+          <FieldError message={form.formState.errors.email?.message} />
 
-        <RequiredInput
-          label="Phone Number"
-          placeholder="Enter your phone number"
-          register={form.register("phoneNumber")}
-          className={inputClass}
-        />
-        <FieldError message={form.formState.errors.phoneNumber?.message} />
+          <RequiredInput label="Phone Number" placeholder="Enter your phone number"
+            register={form.register("phoneNumber")} className={inputClass} />
+          <FieldError message={form.formState.errors.phoneNumber?.message} />
 
-        {requiresBirthDetails ? (
-          <>
-            <RequiredInput
-              label="Date of Birth"
-              type="date"
-              register={form.register("dob")}
-              className={inputClass}
+          {requiresBirthDetails ? (
+            <>
+              <RequiredInput label="Date of Birth" type="date"
+                register={form.register("dob")} className={inputClass} />
+              <FieldError message={form.formState.errors.dob?.message} />
+
+              <RequiredInput label="Time of Birth" type="time"
+                register={form.register("tob")} className={inputClass} />
+              <FieldError message={form.formState.errors.tob?.message} />
+
+              <RequiredInput label="Place of Birth" placeholder="Enter your place of birth"
+                register={form.register("pob")} className={inputClass} />
+              <FieldError message={form.formState.errors.pob?.message} />
+            </>
+          ) : null}
+
+          <label className="text-sm font-medium text-sage">
+            Additional Message
+            <textarea
+              className={`${inputClass} min-h-24 resize-none`}
+              placeholder="Anything you want to share before the consultation"
+              {...form.register("message")}
             />
-            <FieldError message={form.formState.errors.dob?.message} />
-
-            <RequiredInput
-              label="Time of Birth"
-              type="time"
-              register={form.register("tob")}
-              className={inputClass}
-            />
-            <FieldError message={form.formState.errors.tob?.message} />
-
-            <RequiredInput
-              label="Place of Birth"
-              placeholder="Enter your place of birth"
-              register={form.register("pob")}
-              className={inputClass}
-            />
-            <FieldError message={form.formState.errors.pob?.message} />
-          </>
-        ) : null}
-
-        {/* Screenshot upload */}
-        <label className="text-sm font-medium text-sage">
-          Payment Screenshot <span className="text-ember">*</span>
-          <div className="mt-2 rounded-[1.5rem] border border-dashed border-gold/40 bg-gold/5 p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-sage">
-              <Upload className="h-4 w-4 text-gold" />
-              Upload the screenshot after payment
-            </div>
-            <input
-              type="file"
-              accept="image/*"
-              className="block w-full text-sm text-sage file:mr-4 file:rounded-full file:border-0 file:bg-sage file:px-4 file:py-2 file:font-medium file:text-ivory"
-              {...form.register("paymentScreenshot")}
-            />
-            <p className="mt-2 text-xs text-sage/65">Accepted: JPG, PNG, WEBP, or any image from your payment app.</p>
-          </div>
-        </label>
-        <FieldError message={form.formState.errors.paymentScreenshot?.message} />
-
-        {/* Optional message */}
-        <label className="text-sm font-medium text-sage">
-          Additional Message
-          <textarea
-            className={`${inputClass} min-h-28 resize-none`}
-            placeholder="Anything you want to share before the consultation"
-            {...form.register("message")}
-          />
-        </label>
-
-        {/* Payment confirmation checkbox */}
-        <div className="rounded-[1.5rem] border border-sage/10 bg-ivory/65 p-4">
-          <p className="mb-3 text-sm font-medium text-sage">
-            Payment Confirmation <span className="text-ember">*</span>
-          </p>
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-sage/80">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-sage/20 text-sage focus:ring-gold"
-              {...form.register("paymentCompleted")}
-            />
-            <span>
-              I have completed the payment of <strong>Rs. {finalPrice}</strong>
-              {totalSavings > 0 && ` (original Rs. ${basePrice}, saved Rs. ${totalSavings})`}, uploaded the
-              screenshot proof, and I understand that only after this step will my details be sent on WhatsApp to
-              the astrologer.
-            </span>
           </label>
-          <FieldError message={form.formState.errors.paymentCompleted?.message} />
-        </div>
 
-        {/* Submit */}
-        <div>
+          {/* Error / cancel message */}
+          {statusMsg && step === "form" ? (
+            <p className="rounded-2xl border border-ember/20 bg-ember/5 px-4 py-3 text-sm text-ember">
+              {statusMsg}
+            </p>
+          ) : null}
+
+          {/* Pay button */}
           <button
             type="submit"
-            disabled={isSubmitting || !form.watch("paymentCompleted") || !paymentScreenshot?.item(0)}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-3 font-semibold text-ivory transition hover:bg-sage/90 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={step === "paying"}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-4 text-base font-semibold text-ivory shadow-glow transition hover:bg-sage/88 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? (
+            {step === "paying" ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Uploading &amp; sending…
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Opening payment…
               </>
             ) : (
               <>
-                <MessageCircle className="h-4 w-4" />
-                Proceed to Astrologer Confirmation
+                <CreditCard className="h-5 w-5" />
+                Pay Rs. {finalPrice} via Razorpay
               </>
             )}
           </button>
-        </div>
-      </form>
 
-      {/* Confirmation banner */}
-      {confirmation ? (
-        <div className="mt-5 rounded-3xl border border-gold/25 bg-gold/10 p-4 text-sm text-sage">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 text-gold" />
-            <div>
-              <p>{confirmation}</p>
-              {proofUrl ? (
-                <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                  <a
-                    href={proofUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory"
-                  >
-                    Open Screenshot
-                  </a>
-                  <button
-                    type="button"
-                    onClick={copyProofLink}
-                    className="inline-flex items-center justify-center rounded-full border border-sage/15 bg-white/70 px-4 py-2 text-xs font-semibold text-sage"
-                  >
-                    Copy Screenshot Link
-                  </button>
-                </div>
-              ) : null}
-              <p className="mt-2 flex items-center gap-2 font-medium text-sage">
-                <ShieldCheck className="h-4 w-4 text-gold" />
-                Our team will reach you soon.
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : null}
+          <p className="text-center text-xs text-sage/55">
+            Secured by Razorpay · UPI · Cards · Net Banking · Wallets accepted
+          </p>
+        </form>
+      )}
     </div>
   );
 }
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-2 text-xs text-ember">{message}</p>;
+  return <p className="mt-1 text-xs text-ember">{message}</p>;
 }
 
 function RequiredInput({
-  label,
-  placeholder,
-  type = "text",
-  register,
-  className
+  label, placeholder, type = "text", register, className,
 }: {
-  label: string;
-  placeholder?: string;
-  type?: string;
-  register: UseFormRegisterReturn;
-  className: string;
+  label: string; placeholder?: string; type?: string;
+  register: UseFormRegisterReturn; className: string;
 }) {
   return (
     <label className="text-sm font-medium text-sage">

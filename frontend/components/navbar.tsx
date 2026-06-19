@@ -15,12 +15,13 @@ const links = [
 /* ── AstroVerse Logo — uses the uploaded PNG ── */
 function AstroVerseLogo({ size = 40 }: { size?: number }) {
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src="/astroverse-logo.png"
-      alt="AstroVerse logo"
+      alt="AstroVerse"
       width={size}
       height={size}
-      style={{ objectFit: "contain" }}
+      className="rounded-md object-contain"
     />
   );
 }
