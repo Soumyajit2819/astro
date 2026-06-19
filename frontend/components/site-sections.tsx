@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type MouseEvent } from "react";
 import { BookingForm } from "./booking-form";
+import { Chatbot } from "./chatbot";
 import { FeedbackForm } from "./feedback-form";
 import { Footer } from "./footer";
 import { Navbar } from "./navbar";
@@ -94,6 +95,7 @@ export function SiteSections() {
         youtube={mainAstrologer.youtube}
         facebook={mainAstrologer.facebook}
       />
+      <Chatbot config={config} />
     </>
   );
 
@@ -181,7 +183,7 @@ export function SiteSections() {
             {/* Stat pills */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                [mainAstrologer.experience.split(" ")[0], "Years\nguidance"],
+                [mainAstrologer.experience.match(/\d+\+?/)?.[0] ?? "—", "Years\nguidance"],
                 [`${config.services.length}+`, "Services\navailable"],
                 ["100%", "Personally\nguided"]
               ].map(([value, label]) => (
@@ -264,7 +266,12 @@ export function SiteSections() {
                   </div>
                   <a
                     href="#booking"
-                    onClick={() => setSelectedServiceId(service.id)}
+                    onClick={() => {
+                      setSelectedServiceId(service.id);
+                      setTimeout(() => {
+                        document.getElementById("booking")?.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    }}
                     className="inline-flex items-center gap-2 rounded-full bg-sage px-5 py-2.5 text-sm font-semibold text-ivory shadow-glow transition hover:bg-sage/85"
                   >
                     Book now
