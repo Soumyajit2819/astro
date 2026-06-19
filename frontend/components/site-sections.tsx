@@ -226,64 +226,6 @@ export function SiteSections() {
   }
 
   /* ═══════════════════════════════════════════════════════════
-     SERVICES — compact list, Book now scrolls to booking form
-  ═══════════════════════════════════════════════════════════ */
-  function ServicesSection() {
-    return (
-      <section id="services-list" className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Available Services</p>
-          <h2 className="mt-2 font-display text-3xl text-sage">Choose a service to get started</h2>
-          <p className="mt-2 text-sm text-sage/65">Select a service, complete the UPI payment, and your details go straight to the astrologer on WhatsApp.</p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {config.services.map((service) => {
-            const discounted =
-              (service.discountPercent ?? 0) > 0
-                ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
-                : service.price;
-            return (
-              <div key={service.id}
-                className="flex flex-col justify-between rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow backdrop-blur">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-gold font-medium">{service.type}</p>
-                  <h3 className="mt-3 font-display text-xl text-sage">{service.name}</h3>
-                  <p className="mt-2 text-sm leading-6 text-sage/70">{service.description}</p>
-                </div>
-                <div className="mt-5 flex items-end justify-between gap-4">
-                  <div>
-                    {discounted < service.price ? (
-                      <>
-                        <p className="text-xs text-sage/40 line-through">Rs. {service.price}</p>
-                        <p className="font-display text-2xl font-semibold text-sage">Rs. {discounted}</p>
-                      </>
-                    ) : (
-                      <p className="font-display text-2xl font-semibold text-sage">Rs. {service.price}</p>
-                    )}
-                  </div>
-                  <a
-                    href="#booking"
-                    onClick={() => {
-                      setSelectedServiceId(service.id);
-                      setTimeout(() => {
-                        document.getElementById("booking")?.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full bg-sage px-5 py-2.5 text-sm font-semibold text-ivory shadow-glow transition hover:bg-sage/85"
-                  >
-                    Book now
-                  </a>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════
      SERVICES & CONSULTATION
   ═══════════════════════════════════════════════════════════ */
   function ContactSection() {
