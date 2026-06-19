@@ -6,10 +6,9 @@ import { useState } from "react";
 
 const links = [
   ["About", "#about"],
-  ["Services", "#services-list"],
+  ["Services & Consultation", "#contact"],
   ["Feedback", "#feedback"],
   ["FAQ", "#faq"],
-  ["Contact", "#contact"]
 ] as const;
 
 /* ── AstroVerse Logo — uses the uploaded PNG ── */

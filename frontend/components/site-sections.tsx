@@ -40,7 +40,6 @@ export function SiteSections() {
   const { config, ready, loading, error } = useSiteConfig();
   const [feedbackItems, setFeedbackItems] = useState<FeedbackCardItem[]>([]);
   const [showAllFeedback, setShowAllFeedback] = useState(false);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const mainAstrologer = config.astrologers[0];
 
   useEffect(() => {
@@ -285,98 +284,87 @@ export function SiteSections() {
   }
 
   /* ═══════════════════════════════════════════════════════════
-     CONTACT + BOOKING — services left, form right
-     User picks a service on the left → form on right updates
+     SERVICES & CONSULTATION
   ═══════════════════════════════════════════════════════════ */
   function ContactSection() {
+    // State is LOCAL to this section — no parent re-render on service change
+    const [activeServiceId, setActiveServiceId] = useState<string>(
+      config.services[0]?.id ?? ""
+    );
+
     return (
       <section id="contact" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="mb-10">
-          <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Book a Consultation</p>
-          <h2 className="mt-2 font-display text-3xl text-sage">Choose your service &amp; proceed</h2>
+          <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Services &amp; Consultation</p>
+          <h2 className="mt-2 font-display text-3xl text-sage">Choose your service &amp; book</h2>
           <p className="mt-2 text-sm text-sage/65">
-            Select a service on the left — the booking form updates instantly. Fill your details and pay securely via Razorpay.
+            Select a service below, fill your details, and pay securely via Razorpay. The astrologer is notified on WhatsApp instantly.
           </p>
         </div>
 
         <div id="booking" className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
 
-          {/* ── Left: service picker ── */}
-          <div className="flex flex-col gap-4">
+          {/* ── Left: service cards ── */}
+          <div className="flex flex-col gap-3">
             {config.services.map((service) => {
-              const discounted =
-                (service.discountPercent ?? 0) > 0
-                  ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
-                  : service.price;
-              const isSelected = (selectedServiceId ?? config.services[0]?.id) === service.id;
+              const discounted = (service.discountPercent ?? 0) > 0
+                ? Math.round(service.price * (1 - (service.discountPercent ?? 0) / 100))
+                : service.price;
+              const isSelected = activeServiceId === service.id;
 
               return (
                 <button
                   key={service.id}
                   type="button"
-                  onClick={() => {
-                    setSelectedServiceId(service.id);
-                    // On mobile the form is below — scroll to it smoothly
-                    if (window.innerWidth < 1024) {
-                      setTimeout(() => {
-                        document.getElementById("booking-form-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }, 80);
-                    }
-                  }}
-                  className={`w-full rounded-[2rem] border p-5 text-left transition-all shadow-glow ${
+                  onClick={() => setActiveServiceId(service.id)}
+                  className={`w-full rounded-[2rem] border p-5 text-left transition-all ${
                     isSelected
-                      ? "border-sage bg-sage/8 ring-2 ring-sage/20"
-                      : "border-sage/10 bg-white/80 hover:border-sage/30"
+                      ? "border-sage/50 bg-sage/5 ring-2 ring-sage/20 shadow-glow"
+                      : "border-sage/10 bg-white/80 hover:border-sage/25 shadow-glow"
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <p className="text-xs uppercase tracking-[0.25em] text-gold font-medium">{service.type}</p>
-                      <h3 className="mt-1.5 font-display text-lg text-sage">{service.name}</h3>
-                      <p className="mt-1 text-xs leading-5 text-sage/65">{service.description}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gold font-medium">{service.type}</p>
+                      <h3 className="mt-1 font-display text-lg text-sage">{service.name}</h3>
+                      <p className="mt-1 text-xs leading-5 text-sage/60 line-clamp-2">{service.description}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      {discounted < service.price ? (
-                        <>
-                          <p className="text-xs text-sage/40 line-through">Rs. {service.price}</p>
-                          <p className="font-display text-xl font-semibold text-sage">Rs. {discounted}</p>
-                        </>
-                      ) : (
-                        <p className="font-display text-xl font-semibold text-sage">Rs. {service.price}</p>
+                      {discounted < service.price && (
+                        <p className="text-xs text-sage/40 line-through">Rs. {service.price}</p>
                       )}
+                      <p className="font-display text-lg font-semibold text-sage">Rs. {discounted}</p>
                     </div>
                   </div>
-                  {/* Selected indicator */}
-                  <div className={`mt-3 flex items-center gap-2 text-xs font-semibold transition-all ${
-                    isSelected ? "text-sage" : "text-sage/40"
+                  <div className={`mt-2.5 flex items-center gap-2 text-xs font-medium ${
+                    isSelected ? "text-sage" : "text-sage/35"
                   }`}>
-                    <span className={`h-2 w-2 rounded-full ${isSelected ? "bg-sage" : "bg-sage/25"}`} />
-                    {isSelected ? "Selected — fill details on the right" : "Click to select"}
+                    <span className={`h-2 w-2 rounded-full flex-shrink-0 ${isSelected ? "bg-sage" : "bg-sage/25"}`} />
+                    {isSelected ? "Selected — fill in your details →" : "Tap to select"}
                   </div>
                 </button>
               );
             })}
 
-            {/* Contact info below services */}
-            <div className="rounded-[1.5rem] border border-sage/10 bg-white/70 p-5 text-sm text-sage/75">
+            <div className="rounded-[1.5rem] border border-sage/10 bg-white/70 p-5 text-sm text-sage/70">
               <p className="font-semibold text-sage mb-2">Need help choosing?</p>
-              <p>📱 Phone: {mainAstrologer.phone}</p>
-              <p className="mt-1">💬 WhatsApp: +{mainAstrologer.whatsapp}</p>
+              <p>📱 {mainAstrologer.phone}</p>
+              <p className="mt-1">💬 +{mainAstrologer.whatsapp}</p>
               <p className="mt-1">📍 {mainAstrologer.address}</p>
             </div>
           </div>
 
-          {/* ── Right: booking form — no key prop, no remount ── */}
+          {/* ── Right: booking form ── */}
           <div id="booking-form-anchor">
             <BookingForm
               config={config}
-              initialServiceId={selectedServiceId ?? config.services[0]?.id}
+              initialServiceId={activeServiceId}
             />
           </div>
         </div>
 
-        {loading ? <p className="mt-6 text-sm text-sage/60">Loading live content from Supabase...</p> : null}
-        {error   ? <p className="mt-3 text-sm text-ember">Supabase load issue: {error}</p> : null}
+        {loading ? <p className="mt-6 text-sm text-sage/60">Loading…</p> : null}
+        {error ? <p className="mt-3 text-sm text-ember">Supabase issue: {error}</p> : null}
       </section>
     );
   }
