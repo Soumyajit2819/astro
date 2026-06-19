@@ -318,7 +318,6 @@ export function Chatbot({ config }: { config: SiteConfig }) {
         style={{
           background: "linear-gradient(135deg, #2d3d2a 0%, #3e5438 50%, #52624f 100%)",
           boxShadow: "0 0 0 3px rgba(82,98,79,0.25), 0 8px 24px rgba(30,45,28,0.40)",
-          focusRingColor: "#52624f",
         }}
       >
         {open ? (
