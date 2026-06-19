@@ -211,11 +211,11 @@ export function SiteSections() {
 
             {/* CTAs */}
             <div className="flex flex-wrap gap-4 pt-1">
-              <a href="#booking"
+              <a href="#contact"
                 className="rounded-full bg-sage px-7 py-3 text-sm font-semibold text-ivory shadow-glow transition hover:bg-sage/85">
                 Book a Consultation
               </a>
-              <a href="#services-list"
+              <a href="#contact"
                 className="rounded-full border border-sage/20 bg-white/70 px-7 py-3 text-sm font-semibold text-sage backdrop-blur transition hover:bg-white/90">
                 View Services
               </a>
@@ -314,7 +314,15 @@ export function SiteSections() {
                 <button
                   key={service.id}
                   type="button"
-                  onClick={() => setSelectedServiceId(service.id)}
+                  onClick={() => {
+                    setSelectedServiceId(service.id);
+                    // On mobile the form is below — scroll to it smoothly
+                    if (window.innerWidth < 1024) {
+                      setTimeout(() => {
+                        document.getElementById("booking-form-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 80);
+                    }
+                  }}
                   className={`w-full rounded-[2rem] border p-5 text-left transition-all shadow-glow ${
                     isSelected
                       ? "border-sage bg-sage/8 ring-2 ring-sage/20"
@@ -359,7 +367,7 @@ export function SiteSections() {
           </div>
 
           {/* ── Right: booking form — no key prop, no remount ── */}
-          <div>
+          <div id="booking-form-anchor">
             <BookingForm
               config={config}
               initialServiceId={selectedServiceId ?? config.services[0]?.id}
