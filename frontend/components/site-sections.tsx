@@ -363,34 +363,38 @@ export function SiteSections() {
      SERVICES & CONSULTATION
   ═══════════════════════════════════════════════════════════ */
   function ContactSection() {
-    // State is LOCAL to this section — no parent re-render on service change
-    const [activeServiceId, setActiveServiceId] = useState<string>(
-      config.services[0]?.id ?? ""
-    );
+    // No default — null means nothing selected yet
+    const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
 
-    // Listen for service pre-selection events from banner / demo section / chatbot
+    // Listen for events from banner "Join Now", demo "Enroll Now"
     useEffect(() => {
       const handler = (e: Event) => {
         const detail = (e as CustomEvent<{ serviceId: string }>).detail;
         if (!detail?.serviceId) return;
-
         let targetId = detail.serviceId;
-
-        // "__class__" means find the first class-type service
         if (targetId === "__class__") {
           const classSvc = config.services.find((s) => s.type === "class");
           if (classSvc) targetId = classSvc.id;
           else return;
         }
-
-        // Verify the id exists in services
         const exists = config.services.find((s) => s.id === targetId);
-        if (exists) setActiveServiceId(targetId);
+        if (!exists) return;
+        setActiveServiceId(targetId);
+        // Scroll to booking form on both desktop and mobile
+        setTimeout(() => {
+          document.getElementById("booking-form-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 120);
       };
-
       window.addEventListener("astro-select-service", handler);
       return () => window.removeEventListener("astro-select-service", handler);
     }, []);
+
+    const handleChoose = (serviceId: string) => {
+      setActiveServiceId(serviceId);
+      setTimeout(() => {
+        document.getElementById("booking-form-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    };
 
     return (
       <section id="contact" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -398,13 +402,13 @@ export function SiteSections() {
           <p className="text-xs uppercase tracking-[0.3em] text-gold font-medium">Services &amp; Consultation</p>
           <h2 className="mt-2 font-display text-3xl text-sage">Choose your service &amp; book</h2>
           <p className="mt-2 text-sm text-sage/65">
-            Select a service below, fill your details, and pay securely via Razorpay. The astrologer is notified on WhatsApp instantly.
+            Select a service below, fill your details, and pay securely via Razorpay.
           </p>
         </div>
 
-        <div id="booking" className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
 
-          {/* ── Left: service cards ── */}
+          {/* ── Left: service cards with "Choose this" button ── */}
           <div className="flex flex-col gap-3">
             {config.services.map((service) => {
               const discounted = (service.discountPercent ?? 0) > 0
@@ -413,21 +417,19 @@ export function SiteSections() {
               const isSelected = activeServiceId === service.id;
 
               return (
-                <button
+                <div
                   key={service.id}
-                  type="button"
-                  onClick={() => setActiveServiceId(service.id)}
-                  className={`w-full rounded-[2rem] border p-5 text-left transition-all ${
+                  className={`rounded-[2rem] border p-5 transition-all shadow-glow ${
                     isSelected
-                      ? "border-sage/50 bg-sage/5 ring-2 ring-sage/20 shadow-glow"
-                      : "border-sage/10 bg-white/80 hover:border-sage/25 shadow-glow"
+                      ? "border-sage/50 bg-sage/5 ring-2 ring-sage/20"
+                      : "border-sage/10 bg-white/80"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs uppercase tracking-[0.2em] text-gold font-medium">{service.type}</p>
                       <h3 className="mt-1 font-display text-lg text-sage">{service.name}</h3>
-                      <p className="mt-1 text-xs leading-5 text-sage/60 line-clamp-2">{service.description}</p>
+                      <p className="mt-1 text-xs leading-5 text-sage/60">{service.description}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       {discounted < service.price && (
@@ -436,13 +438,18 @@ export function SiteSections() {
                       <p className="font-display text-lg font-semibold text-sage">Rs. {discounted}</p>
                     </div>
                   </div>
-                  <div className={`mt-2.5 flex items-center gap-2 text-xs font-medium ${
-                    isSelected ? "text-sage" : "text-sage/35"
-                  }`}>
-                    <span className={`h-2 w-2 rounded-full flex-shrink-0 ${isSelected ? "bg-sage" : "bg-sage/25"}`} />
-                    {isSelected ? "Selected — fill in your details →" : "Tap to select"}
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChoose(service.id)}
+                    className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                      isSelected
+                        ? "bg-sage text-ivory shadow-glow cursor-default"
+                        : "border border-sage/30 bg-white text-sage hover:bg-sage hover:text-ivory"
+                    }`}
+                  >
+                    {isSelected ? "✓ Selected" : "Choose this"}
+                  </button>
+                </div>
               );
             })}
 
@@ -454,12 +461,21 @@ export function SiteSections() {
             </div>
           </div>
 
-          {/* ── Right: booking form ── */}
+          {/* ── Right: booking form or placeholder ── */}
           <div id="booking-form-anchor">
-            <BookingForm
-              config={config}
-              initialServiceId={activeServiceId}
-            />
+            {activeServiceId ? (
+              <BookingForm config={config} initialServiceId={activeServiceId} />
+            ) : (
+              <div className="rounded-[2rem] border border-dashed border-sage/20 bg-white/50 p-10 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gold/10">
+                  <span className="text-2xl">🔮</span>
+                </div>
+                <h3 className="font-display text-xl text-sage">Select a service to begin</h3>
+                <p className="mt-2 text-sm text-sage/55">
+                  Click &quot;Choose this&quot; on any service to open the booking form.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

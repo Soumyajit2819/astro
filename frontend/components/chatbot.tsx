@@ -47,7 +47,7 @@ function getBotReply(raw: string, config: SiteConfig): Omit<Message, "id" | "rol
   /* free prediction / free consultation */
   if (match(input, ["free prediction", "free consultation", "free reading", "free astrology", "free", "without payment", "cost free", "no charge"])) {
     return {
-      text: `Personalised free predictions are not available — each consultation requires dedicated time and expertise from ${a.name}.\n\n🌟 *However, you can get a glimpse for free!*\n\nEvery night youtube livestream which maily starts  in between *11:30 PM to 12:00 AM*, ${a.name} goes live on YouTube and gives short demo predictions to viewers.\n\n📺 *Subscribe & watch live:*`,
+      text: `Personalised free predictions are not available — each consultation requires dedicated time and expertise from ${a.name}.\n\n🌟 *However, you can get a glimpse for free!*\n\nEvery night, ${a.name} goes live on YouTube and gives short demo predictions to viewers. The live session usually starts between *11:30 PM and 12:00 AM*.\n\n📺 Subscribe so you never miss a session:`,
       socialLinks: [{ label: "Subscribe on YouTube for Free Live Predictions", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
       chips: ["All services", "Book now", "Demo class"],
     };
