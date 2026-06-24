@@ -311,7 +311,6 @@ export function SiteSections() {
                         <button
                           type="button"
                           onClick={() => {
-                            // Store the class service id so ContactSection picks it up
                             sessionStorage.setItem("astro-preselect-service", svc.id);
                             document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
                           }}
@@ -358,11 +357,19 @@ export function SiteSections() {
   function ContactSection() {
     // State is LOCAL to this section — no parent re-render on service change
     const [activeServiceId, setActiveServiceId] = useState<string>(() => {
-      // Check if demo section set a pre-selected service
       if (typeof window !== "undefined") {
-        const preselect = sessionStorage.getItem("astro-preselect-service");
+        // Check preselect from demo enroll button or banner
+        const preselect =
+          sessionStorage.getItem("astro-preselect-service") ||
+          sessionStorage.getItem("astro-preselect-service-banner");
         if (preselect) {
           sessionStorage.removeItem("astro-preselect-service");
+          sessionStorage.removeItem("astro-preselect-service-banner");
+          // If "class" keyword, find first class service
+          if (preselect === "class") {
+            const classSvc = config.services.find((s) => s.type === "class");
+            if (classSvc) return classSvc.id;
+          }
           return preselect;
         }
       }

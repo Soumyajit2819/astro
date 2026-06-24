@@ -44,6 +44,48 @@ function getBotReply(raw: string, config: SiteConfig): Omit<Message, "id" | "rol
 
   /* ── SPECIFIC SERVICES — check before generic "about" ── */
 
+  /* free prediction / free consultation */
+  if (match(input, ["free prediction", "free consultation", "free reading", "free astrology", "free", "without payment", "cost free", "no charge"])) {
+    return {
+      text: `Personalised free predictions are not available — each consultation requires dedicated time and expertise from ${a.name}.\n\n🌟 *However, you can get a glimpse for free!*\n\nEvery night from *11:30 PM to 12:00 AM*, ${a.name} goes live on YouTube and gives short demo predictions to viewers.\n\n📺 *Subscribe & watch live:*`,
+      socialLinks: [{ label: "Subscribe on YouTube for Free Live Predictions", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
+      chips: ["All services", "Book now", "Demo class"],
+    };
+  }
+
+  /* demo class */
+  if (match(input, ["demo", "demo class", "free class", "trial class", "sample class", "watch class", "preview"])) {
+    return {
+      text: `🎓 *Free Demo Class Available!*\n\nWatch ${a.name}'s live demo class on our website — it's completely free to watch before you decide to enroll.\n\nThe demo class covers Vedic astrology basics and gives you a feel for how our full course is taught.\n\n👇 You can also watch the live session on YouTube:\nEvery night *11:30 PM – 12:00 AM* — short live predictions & demos.`,
+      socialLinks: [{ label: "Watch Demo on YouTube", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
+      chips: ["Enroll in class", "All services", "Book now"],
+    };
+  }
+
+  /* live session */
+  if (match(input, ["live", "live class", "live session", "tonight", "11:30", "12 am", "midnight", "youtube live"])) {
+    return {
+      text: `📺 *Daily Live Session — Free*\n\n${a.name} goes live every night from *11:30 PM to 12:00 AM* on YouTube.\n\nDuring the live session, he gives short demo predictions and answers questions from viewers — completely free!\n\nSubscribe to never miss a session:`,
+      socialLinks: [{ label: "Subscribe on YouTube", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
+      chips: ["All services", "Book now"],
+    };
+  }
+
+  /* class enrollment */
+  if (match(input, ["enroll", "join class", "astrology class", "foundation class", "enroll in class"])) {
+    const classSvcs = svcs.filter((s) => s.type === "class");
+    if (classSvcs.length > 0) {
+      const lines = classSvcs.map((s) => {
+        const dp = discountedPrice(s.price, s.discountPercent ?? 0);
+        return `🎓 *${s.name}*\n${s.description}\nPrice: Rs. ${dp}${dp < s.price ? ` (${s.discountPercent}% off from Rs. ${s.price})` : ""}`;
+      });
+      return {
+        text: `Here are our available classes:\n\n${lines.join("\n\n")}\n\n*No birth details needed* — just your name, phone, and email to enroll!`,
+        chips: ["Book now", "Demo class", "All services"],
+      };
+    }
+  }
+
   /* marriage */
   if (match(input, ["marriage", "wedding", "kundali", "compatibility", "partner", "love", "relationship"])) {
     const svc = svcs.find((s) =>
@@ -198,7 +240,7 @@ function makeWelcome(config: SiteConfig): Message {
   return {
     id: uid(), role: "bot",
     text: `Namaste! 🙏 I'm *Verse AI* — the AstroVerse assistant.\n\nAsk me about services, the astrologer, booking, or anything else.`,
-    chips: ["All services", "About astrologer", "How to book", "FAQs", "Social media"],
+    chips: ["All services", "About astrologer", "How to book", "FAQs", "Social media", "Demo class", "Free prediction"],
   };
 }
 
@@ -293,6 +335,9 @@ export function Chatbot({ config }: { config: SiteConfig }) {
     "Payment info": "payment",
     "Go to #booking": "book now",
     "Go to #feedback": "leave feedback",
+    "Demo class": "demo class",
+    "Enroll in class": "enroll in class",
+    "Free prediction": "free prediction",
   };
 
   function handleChip(chip: string) {
