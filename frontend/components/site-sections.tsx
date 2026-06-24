@@ -317,7 +317,9 @@ export function SiteSections() {
                         <button
                           type="button"
                           onClick={() => {
-                            sessionStorage.setItem("astro-preselect-service", svc.id);
+                            window.dispatchEvent(new CustomEvent("astro-select-service", {
+                              detail: { serviceId: svc.id }
+                            }));
                             document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
                           }}
                           className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-5 py-2.5 text-sm font-semibold text-ivory shadow-glow transition hover:bg-sage/85"
@@ -362,25 +364,33 @@ export function SiteSections() {
   ═══════════════════════════════════════════════════════════ */
   function ContactSection() {
     // State is LOCAL to this section — no parent re-render on service change
-    const [activeServiceId, setActiveServiceId] = useState<string>(() => {
-      if (typeof window !== "undefined") {
-        // Check preselect from demo enroll button or banner
-        const preselect =
-          sessionStorage.getItem("astro-preselect-service") ||
-          sessionStorage.getItem("astro-preselect-service-banner");
-        if (preselect) {
-          sessionStorage.removeItem("astro-preselect-service");
-          sessionStorage.removeItem("astro-preselect-service-banner");
-          // If "class" keyword, find first class service
-          if (preselect === "class") {
-            const classSvc = config.services.find((s) => s.type === "class");
-            if (classSvc) return classSvc.id;
-          }
-          return preselect;
+    const [activeServiceId, setActiveServiceId] = useState<string>(
+      config.services[0]?.id ?? ""
+    );
+
+    // Listen for service pre-selection events from banner / demo section / chatbot
+    useEffect(() => {
+      const handler = (e: Event) => {
+        const detail = (e as CustomEvent<{ serviceId: string }>).detail;
+        if (!detail?.serviceId) return;
+
+        let targetId = detail.serviceId;
+
+        // "__class__" means find the first class-type service
+        if (targetId === "__class__") {
+          const classSvc = config.services.find((s) => s.type === "class");
+          if (classSvc) targetId = classSvc.id;
+          else return;
         }
-      }
-      return config.services[0]?.id ?? "";
-    });
+
+        // Verify the id exists in services
+        const exists = config.services.find((s) => s.id === targetId);
+        if (exists) setActiveServiceId(targetId);
+      };
+
+      window.addEventListener("astro-select-service", handler);
+      return () => window.removeEventListener("astro-select-service", handler);
+    }, []);
 
     return (
       <section id="contact" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">

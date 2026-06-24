@@ -47,7 +47,7 @@ function getBotReply(raw: string, config: SiteConfig): Omit<Message, "id" | "rol
   /* free prediction / free consultation */
   if (match(input, ["free prediction", "free consultation", "free reading", "free astrology", "free", "without payment", "cost free", "no charge"])) {
     return {
-      text: `Personalised free predictions are not available — each consultation requires dedicated time and expertise from ${a.name}.\n\n🌟 *However, you can get a glimpse for free!*\n\nEvery night from *11:30 PM to 12:00 AM*, ${a.name} goes live on YouTube and gives short demo predictions to viewers.\n\n📺 *Subscribe & watch live:*`,
+      text: `Personalised free predictions are not available — each consultation requires dedicated time and expertise from ${a.name}.\n\n🌟 *However, you can get a glimpse for free!*\n\nEvery night youtube livestream which maily starts  in between *11:30 PM to 12:00 AM*, ${a.name} goes live on YouTube and gives short demo predictions to viewers.\n\n📺 *Subscribe & watch live:*`,
       socialLinks: [{ label: "Subscribe on YouTube for Free Live Predictions", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
       chips: ["All services", "Book now", "Demo class"],
     };
@@ -56,9 +56,8 @@ function getBotReply(raw: string, config: SiteConfig): Omit<Message, "id" | "rol
   /* demo class */
   if (match(input, ["demo", "demo class", "free class", "trial class", "sample class", "watch class", "preview"])) {
     return {
-      text: `🎓 *Free Demo Class Available!*\n\nWatch ${a.name}'s live demo class right here on our website — completely free before you decide to enroll.\n\nThe demo covers Vedic astrology basics and gives you a real feel for the full course.\n\n*Also — Daily Free Live Predictions:*\nEvery night *11:30 PM – 12:00 AM* ${a.name} goes live on YouTube with short predictions for viewers.`,
-      chips: ["Go to #demo-class", "Enroll in class", "All services"],
-      socialLinks: [{ label: "Subscribe for Daily Free Live Predictions", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
+      text: `✅ Yes! A *free demo class* is available on our website.\n\nClick the button below to watch it — no sign-up needed.`,
+      chips: ["Go to #demo-class", "Enroll in class"],
     };
   }
 

@@ -9,12 +9,10 @@ interface AnnouncementBannerProps {
 export function AnnouncementBanner({ classServiceId }: AnnouncementBannerProps) {
 
   const handleEnroll = () => {
-    // Store the actual class service id so ContactSection picks it up
-    if (classServiceId) {
-      sessionStorage.setItem("astro-preselect-service", classServiceId);
-    } else {
-      sessionStorage.setItem("astro-preselect-service-banner", "class");
-    }
+    // Fire a custom event that ContactSection listens to
+    window.dispatchEvent(new CustomEvent("astro-select-service", {
+      detail: { serviceId: classServiceId ?? "__class__" }
+    }));
     const el = document.getElementById("contact");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
