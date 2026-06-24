@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type MouseEvent } from "react";
 import { BookingForm } from "./booking-form";
+import { AnnouncementBanner } from "./announcement-banner";
 import { Chatbot } from "./chatbot";
 import { FeedbackForm } from "./feedback-form";
 import { Footer } from "./footer";
@@ -78,9 +79,14 @@ export function SiteSections() {
     setShowAllFeedback((current) => !current);
   };
 
+  // Find class service id for the banner
+  const classService = config.services.find((s) => s.type === "class");
+
   return (
     <>
       <Navbar brandName={config.brandName} />
+      {/* Offer banner — above hero, below navbar */}
+      {classService && <AnnouncementBanner classServiceId={classService.id} />}
       <main>
         <HeroSection />
         <DemoClassSection />

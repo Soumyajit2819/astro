@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AnnouncementBanner } from "@/components/announcement-banner";
 
 export const metadata: Metadata = {
   title: "AstroVerse — Vedic Astrology & Spiritual Consultations",
@@ -11,7 +10,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className="bg-ivory font-body text-sage antialiased">
-        <AnnouncementBanner />
         {children}
       </body>
     </html>

@@ -56,9 +56,9 @@ function getBotReply(raw: string, config: SiteConfig): Omit<Message, "id" | "rol
   /* demo class */
   if (match(input, ["demo", "demo class", "free class", "trial class", "sample class", "watch class", "preview"])) {
     return {
-      text: `🎓 *Free Demo Class Available!*\n\nWatch ${a.name}'s live demo class on our website — it's completely free to watch before you decide to enroll.\n\nThe demo class covers Vedic astrology basics and gives you a feel for how our full course is taught.\n\n👇 You can also watch the live session on YouTube:\nEvery night *11:30 PM – 12:00 AM* — short live predictions & demos.`,
-      socialLinks: [{ label: "Watch Demo on YouTube", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
-      chips: ["Enroll in class", "All services", "Book now"],
+      text: `🎓 *Free Demo Class Available!*\n\nWatch ${a.name}'s live demo class right here on our website — completely free before you decide to enroll.\n\nThe demo covers Vedic astrology basics and gives you a real feel for the full course.\n\n*Also — Daily Free Live Predictions:*\nEvery night *11:30 PM – 12:00 AM* ${a.name} goes live on YouTube with short predictions for viewers.`,
+      chips: ["Go to #demo-class", "Enroll in class", "All services"],
+      socialLinks: [{ label: "Subscribe for Daily Free Live Predictions", url: "https://www.youtube.com/@astroarijitbangla", icon: "youtube" as const }],
     };
   }
 
