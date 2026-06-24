@@ -27,17 +27,11 @@ interface RazorpayResponse {
 }
 interface RazorpayInstance { open: () => void; }
 
-/* ── Form type based on service price ──────────────────────
-   "own"    = single DOB/TOB/POB (Rs. 230, 797, 1132 …)
-   "couple" = boy + girl DOB/TOB/POB (Rs. 571)
-   "class"  = email only, no birth details
-   ────────────────────────────────────────────────────────── */
 type FormType = "own" | "couple" | "class";
 
-function getFormType(service: ServiceItem | undefined): FormType {
+function getFormType(service: ServiceItem | null | undefined): FormType {
   if (!service) return "own";
   if (service.type === "class") return "class";
-  // Couple / compatibility services — typically marriage/kundali match at Rs. 571
   const price = service.price;
   const name = service.name.toLowerCase();
   const desc = service.description.toLowerCase();
@@ -54,18 +48,9 @@ const baseSchema = z.object({
   fullName:    z.string().min(2, "Please enter your name."),
   phoneNumber: z.string().min(10, "Please enter a valid phone number."),
   email:       z.string().email("Please enter a valid email."),
-  // own
-  dob: z.string().optional(),
-  tob: z.string().optional(),
-  pob: z.string().optional(),
-  // couple — boy
-  boyDob: z.string().optional(),
-  boyTob: z.string().optional(),
-  boyPob: z.string().optional(),
-  // couple — girl
-  girlDob: z.string().optional(),
-  girlTob: z.string().optional(),
-  girlPob: z.string().optional(),
+  dob: z.string().optional(), tob: z.string().optional(), pob: z.string().optional(),
+  boyDob: z.string().optional(), boyTob: z.string().optional(), boyPob: z.string().optional(),
+  girlDob: z.string().optional(), girlTob: z.string().optional(), girlPob: z.string().optional(),
   message: z.string().optional(),
 });
 
@@ -84,24 +69,25 @@ export function BookingForm({ config, initialServiceId }: {
   const [appliedCoupon, setAppliedCoupon] = useState<CouponItem | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
-  const [activeServiceId, setActiveServiceId] = useState<string>(
-    initialServiceId ?? config.services[0]?.id ?? ""
-  );
+  // ── KEY FIX: derive selectedService DIRECTLY from the prop, no internal state ──
+  // This means whenever the parent changes initialServiceId, price updates instantly.
+  const selectedService: ServiceItem | null =
+    initialServiceId
+      ? (config.services.find((s) => s.id === initialServiceId) ?? null)
+      : null;
 
-  useEffect(() => {
-    if (initialServiceId) {
-      setActiveServiceId(initialServiceId);
-      setAppliedCoupon(null); setCouponCode(""); setCouponError(null);
-    }
-  }, [initialServiceId]);
-
-  const selectedService = config.services.find((s) => s.id === activeServiceId) ?? config.services[0];
   const formType = getFormType(selectedService);
   const mainAstrologer = config.astrologers[0];
 
+  // Reset coupon when service changes
+  useEffect(() => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError(null);
+  }, [initialServiceId]);
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const bookingSchema = useMemo(() => baseSchema, []);
-
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
@@ -113,7 +99,7 @@ export function BookingForm({ config, initialServiceId }: {
     },
   });
 
-  // Price
+  // Price — always computed from the live prop-derived selectedService
   const basePrice = selectedService?.price ?? 0;
   const svcDiscount = selectedService?.discountPercent ?? 0;
   const priceAfterSvc = svcDiscount > 0 ? Math.round(basePrice * (1 - svcDiscount / 100)) : basePrice;
@@ -123,17 +109,15 @@ export function BookingForm({ config, initialServiceId }: {
 
   const skipDraftRef = useRef(false);
 
-  // Draft restore
+  // Draft restore (only personal details, not service — service is driven by parent)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem(BOOKING_DRAFT_STORAGE_KEY);
     if (!saved) return;
     try {
-      const d = JSON.parse(saved) as Partial<BookingFormValues & { serviceId: string }>;
-      if (d.fullName || d.email || d.phoneNumber) {
+      const d = JSON.parse(saved) as Partial<BookingFormValues>;
+      if (d.fullName || d.email || d.phoneNumber)
         form.reset({ ...d, message: d.message ?? "" });
-        if (d.serviceId) setActiveServiceId(d.serviceId);
-      }
     } catch { window.localStorage.removeItem(BOOKING_DRAFT_STORAGE_KEY); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -143,10 +127,10 @@ export function BookingForm({ config, initialServiceId }: {
     const sub = form.watch((values) => {
       if (typeof window === "undefined" || skipDraftRef.current) { skipDraftRef.current = false; return; }
       if (values.fullName || values.email || values.phoneNumber)
-        window.localStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify({ ...values, serviceId: activeServiceId }));
+        window.localStorage.setItem(BOOKING_DRAFT_STORAGE_KEY, JSON.stringify(values));
     });
     return () => sub.unsubscribe();
-  }, [form, activeServiceId]);
+  }, [form]);
 
   // Razorpay script
   useEffect(() => {
@@ -192,31 +176,16 @@ export function BookingForm({ config, initialServiceId }: {
       ...(appliedCoupon ? [`*Coupon:* ${appliedCoupon.code} (${appliedCoupon.discountPercent}% off)`] : []),
       `*Payment ID:* ${paymentId}`, ``,
       `*Client Details*`,
-      `Name: ${values.fullName}`,
-      `Phone: ${values.phoneNumber}`,
-      `Email: ${values.email}`,
+      `Name: ${values.fullName}`, `Phone: ${values.phoneNumber}`, `Email: ${values.email}`,
     ];
-    if (formType === "own") {
-      lines.push(``, `*Birth Details*`,
-        `Date of Birth: ${values.dob}`,
-        `Time of Birth: ${values.tob}`,
-        `Place of Birth: ${values.pob}`);
-    }
-    if (formType === "couple") {
-      lines.push(``, `*Boy's Birth Details*`,
-        `Date of Birth: ${values.boyDob}`,
-        `Time of Birth: ${values.boyTob}`,
-        `Place of Birth: ${values.boyPob}`,
-        ``, `*Girl's Birth Details*`,
-        `Date of Birth: ${values.girlDob}`,
-        `Time of Birth: ${values.girlTob}`,
-        `Place of Birth: ${values.girlPob}`);
-    }
-    if (formType === "class") {
-      lines.push(``, `_Class enrollment — please add to the WhatsApp group and share class schedule._`);
-    } else {
-      lines.push(``, `_Payment verified. Please reach out to schedule the consultation._`);
-    }
+    if (formType === "own") lines.push(``, `*Birth Details*`,
+      `Date of Birth: ${values.dob}`, `Time of Birth: ${values.tob}`, `Place of Birth: ${values.pob}`);
+    if (formType === "couple") lines.push(``, `*Boy's Birth Details*`,
+      `DOB: ${values.boyDob}`, `TOB: ${values.boyTob}`, `POB: ${values.boyPob}`,
+      ``, `*Girl's Birth Details*`,
+      `DOB: ${values.girlDob}`, `TOB: ${values.girlTob}`, `POB: ${values.girlPob}`);
+    if (formType === "class") lines.push(``, `_Class enrollment — please add to WhatsApp group and share schedule._`);
+    else lines.push(``, `_Payment verified. Please reach out to schedule the consultation._`);
     if (values.message) lines.push(``, `*Message:* ${values.message}`);
     return lines;
   };
@@ -225,7 +194,7 @@ export function BookingForm({ config, initialServiceId }: {
     const validErr = validateFields(values);
     if (validErr) { setStatusMsg(validErr); return; }
     const service = selectedService;
-    if (!service) return;
+    if (!service) { setStatusMsg("Please select a service first."); return; }
     setStep("paying"); setStatusMsg(null);
     try {
       const orderRes = await fetch("/api/payments/create-order", {
@@ -281,9 +250,9 @@ export function BookingForm({ config, initialServiceId }: {
   return (
     <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-5 shadow-glow backdrop-blur sm:p-7">
       <h3 className="font-display text-xl font-semibold text-sage">Booking Details</h3>
-      <p className="mt-1 text-sm text-sage/65">Fill your details and pay securely via Razorpay. Astrologer is notified on WhatsApp automatically.</p>
+      <p className="mt-1 text-sm text-sage/65">Fill your details and pay securely via Razorpay.</p>
 
-      {/* Service summary */}
+      {/* Service summary — always reflects current prop */}
       {selectedService && (
         <div className="mt-4 rounded-[1.5rem] border border-gold/25 bg-gold/8 px-5 py-4">
           <p className="text-xs uppercase tracking-[0.2em] text-gold font-medium">{selectedService.type}</p>
@@ -296,10 +265,9 @@ export function BookingForm({ config, initialServiceId }: {
             </div>
           </div>
           <p className="mt-1 text-xs text-sage/60">{selectedService.description}</p>
-          {/* Form type hint */}
           <p className="mt-2 text-xs text-gold font-medium">
-            {formType === "class" && "📚 Class enrollment — no birth details needed"}
-            {formType === "couple" && "💑 Compatibility consultation — both partner details needed"}
+            {formType === "class" && "📚 Class enrollment — email only, no birth details needed"}
+            {formType === "couple" && "💑 Compatibility — both boy & girl birth details needed"}
             {formType === "own" && "🔮 Personal consultation — your birth details needed"}
           </p>
         </div>
@@ -364,7 +332,7 @@ export function BookingForm({ config, initialServiceId }: {
             {couponError && <p className="mt-1.5 text-xs text-ember">{couponError}</p>}
           </div>
 
-          {/* Base fields */}
+          {/* Personal fields */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div><RequiredInput label="Full Name" placeholder="Your full name" register={form.register("fullName")} className={inputClass} /><FieldError message={form.formState.errors.fullName?.message} /></div>
             <div><RequiredInput label="Phone Number" placeholder="10-digit number" register={form.register("phoneNumber")} className={inputClass} /><FieldError message={form.formState.errors.phoneNumber?.message} /></div>
@@ -415,9 +383,12 @@ export function BookingForm({ config, initialServiceId }: {
             <p className="rounded-2xl border border-ember/20 bg-ember/5 px-4 py-3 text-sm text-ember">{statusMsg}</p>
           )}
 
-          <button type="submit" disabled={step === "paying"}
+          <button type="submit" disabled={step === "paying" || !selectedService}
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-4 text-base font-semibold text-ivory shadow-glow transition hover:bg-sage/88 disabled:cursor-not-allowed disabled:opacity-60">
-            {step === "paying" ? (<><Loader2 className="h-5 w-5 animate-spin" /> Opening payment…</>) : (<><CreditCard className="h-5 w-5" /> Pay Rs. {finalPrice} via Razorpay</>)}
+            {step === "paying"
+              ? (<><Loader2 className="h-5 w-5 animate-spin" /> Opening payment…</>)
+              : (<><CreditCard className="h-5 w-5" /> Pay Rs. {finalPrice} via Razorpay</>)
+            }
           </button>
           <p className="text-center text-xs text-sage/50">Secured by Razorpay · UPI · Cards · Net Banking · Wallets</p>
         </form>
