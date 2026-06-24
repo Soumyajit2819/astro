@@ -308,18 +308,17 @@ export function SiteSections() {
                             <p className="font-display text-lg font-semibold text-sage">Rs. {discounted}</p>
                           </div>
                         </div>
-                        <a
-                          href="#contact"
+                        <button
+                          type="button"
                           onClick={() => {
-                            // Scroll to contact section
-                            setTimeout(() => {
-                              document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
-                            }, 50);
+                            // Store the class service id so ContactSection picks it up
+                            sessionStorage.setItem("astro-preselect-service", svc.id);
+                            document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
                           }}
                           className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-5 py-2.5 text-sm font-semibold text-ivory shadow-glow transition hover:bg-sage/85"
                         >
                           Enroll — Pay Rs. {discounted}
-                        </a>
+                        </button>
                       </div>
                     );
                   })}
@@ -358,9 +357,17 @@ export function SiteSections() {
   ═══════════════════════════════════════════════════════════ */
   function ContactSection() {
     // State is LOCAL to this section — no parent re-render on service change
-    const [activeServiceId, setActiveServiceId] = useState<string>(
-      config.services[0]?.id ?? ""
-    );
+    const [activeServiceId, setActiveServiceId] = useState<string>(() => {
+      // Check if demo section set a pre-selected service
+      if (typeof window !== "undefined") {
+        const preselect = sessionStorage.getItem("astro-preselect-service");
+        if (preselect) {
+          sessionStorage.removeItem("astro-preselect-service");
+          return preselect;
+        }
+      }
+      return config.services[0]?.id ?? "";
+    });
 
     return (
       <section id="contact" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
