@@ -68,8 +68,12 @@ export async function signInWithGoogle() {
   const { error } = await supabaseAuth.auth.signInWithOAuth({
     provider: "google",
     options: {
-      // Redirect back to /membership so the page can detect session and show Pay button
-      redirectTo: `${window.location.origin}/membership`,
+      // Always use the dedicated callback route so code exchange happens correctly on Vercel
+      redirectTo: `${window.location.origin}/auth/callback?next=/membership`,
+      queryParams: {
+        access_type: "offline",
+        prompt: "select_account",
+      },
     },
   });
   if (error) throw error;

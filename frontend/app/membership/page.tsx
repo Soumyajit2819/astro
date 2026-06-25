@@ -60,15 +60,24 @@ export default function MembershipPage() {
   const [loading,  setLoading]    = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [openFaq,  setOpenFaq]    = useState<number | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check for auth error from callback redirect
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("auth_error");
+    if (err) {
+      setAuthError(decodeURIComponent(err));
+      // Clean URL
+      window.history.replaceState({}, "", "/membership");
+    }
+
     /** Load settings + session on mount */
     const init = async () => {
       const [s, session] = await Promise.all([getMembershipSettings(), getSession()]);
       setSettings(s);
 
       if (session?.user) {
-        // Ensure profile row exists (first-time login)
         await syncProfile(session.user);
         const p = await getUserProfile(session.user.id);
         setProfile(p);
@@ -77,18 +86,18 @@ export default function MembershipPage() {
     };
     void init();
 
-    /** Listen for auth state changes — fires after OAuth redirect */
+    /** Listen for auth state changes — fires reliably after OAuth redirect + code exchange */
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange(
       async (event, session) => {
-        if (session?.user) {
-          // Upsert profile via server API (bypasses anon RLS)
+        if (event === "SIGNED_IN" && session?.user) {
           await syncProfile(session.user);
           const p = await getUserProfile(session.user.id);
           setProfile(p);
-        } else {
+          setLoading(false);
+        } else if (event === "SIGNED_OUT") {
           setProfile(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
@@ -202,6 +211,15 @@ export default function MembershipPage() {
           </div>
         </div>
       </section>
+
+      {/* Auth error banner */}
+      {authError && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="rounded-2xl border border-ember/20 bg-ember/5 px-5 py-3 text-sm text-ember">
+            Sign-in error: {authError}. Please try again.
+          </div>
+        </div>
+      )}
 
       {/* ── Benefits ── */}
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
