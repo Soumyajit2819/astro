@@ -68,7 +68,8 @@ export async function signInWithGoogle() {
   const { error } = await supabaseAuth.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/membership/premium`,
+      // Redirect back to /membership so the page can detect session and show Pay button
+      redirectTo: `${window.location.origin}/membership`,
     },
   });
   if (error) throw error;

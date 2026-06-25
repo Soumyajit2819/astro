@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, Lock, Sparkles, Star, CheckCircle2, ChevronDown } from "lucide-react";
+import { Crown, Lock, Sparkles, Star, CheckCircle2, ChevronDown, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -8,6 +8,7 @@ import {
   getSession,
   signInWithGoogle,
   getUserProfile,
+  supabaseAuth,
   type MembershipSettings,
   type UserProfile,
 } from "@/lib/supabase-auth";
@@ -37,16 +38,51 @@ export default function MembershipPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
+    // Load settings + current session
     const init = async () => {
       const [s, session] = await Promise.all([getMembershipSettings(), getSession()]);
       setSettings(s);
       if (session?.user) {
-        const p = await getUserProfile(session.user.id);
+        let p = await getUserProfile(session.user.id);
+        // If profile doesn't exist yet (trigger delay), create it manually
+        if (!p) {
+          await supabaseAuth.from("profiles").upsert({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name ?? null,
+            avatar_url: session.user.user_metadata?.avatar_url ?? null,
+            premium: false,
+          }, { onConflict: "id" });
+          p = await getUserProfile(session.user.id);
+        }
         setProfile(p);
       }
       setLoading(false);
     };
     void init();
+
+    // Listen for auth state changes (fires after OAuth redirect)
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        let p = await getUserProfile(session.user.id);
+        if (!p) {
+          await supabaseAuth.from("profiles").upsert({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name ?? null,
+            avatar_url: session.user.user_metadata?.avatar_url ?? null,
+            premium: false,
+          }, { onConflict: "id" });
+          p = await getUserProfile(session.user.id);
+        }
+        setProfile(p);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleGoogleSignIn = async () => {

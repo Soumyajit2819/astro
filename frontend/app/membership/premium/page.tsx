@@ -27,7 +27,19 @@ export default function PremiumLibraryPage() {
       const session = await getSession();
       if (!session?.user) { router.replace("/membership"); return; }
 
-      const p = await getUserProfile(session.user.id);
+      let p = await getUserProfile(session.user.id);
+      // Create profile if trigger didn't fire yet
+      if (!p) {
+        await supabaseAuth.from("profiles").upsert({
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name ?? null,
+          avatar_url: session.user.user_metadata?.avatar_url ?? null,
+          premium: false,
+        }, { onConflict: "id" });
+        p = await getUserProfile(session.user.id);
+      }
+
       if (!p?.premium) { router.replace("/membership"); return; }
 
       setProfile(p);
