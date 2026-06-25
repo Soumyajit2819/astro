@@ -9,6 +9,7 @@ import {
   getUserProfile,
   getPremiumVideos,
   signOut,
+  supabaseAuth,
   type UserProfile,
   type PremiumVideo,
 } from "@/lib/supabase-auth";
