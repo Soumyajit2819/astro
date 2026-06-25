@@ -16,6 +16,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { BookingForm } from "./booking-form";
 import { AnnouncementBanner } from "./announcement-banner";
 import { Chatbot } from "./chatbot";
+import { MembershipBanner } from "./membership-banner";
 import { FeedbackForm } from "./feedback-form";
 import { Footer } from "./footer";
 import { Navbar } from "./navbar";
@@ -89,6 +90,8 @@ export function SiteSections() {
       {classService && <AnnouncementBanner classServiceId={classService.id} />}
       <main>
         <HeroSection />
+        {/* ── Membership banner — below hero, above demo class ── */}
+        <MembershipBanner />
         <DemoClassSection />
         <ContactSection />
         <FeedbackSection />

@@ -8,6 +8,7 @@ const links = [
   ["About", "#about"],
   ["Demo Class", "#demo-class"],
   ["Services & Consultation", "#contact"],
+  ["Membership", "/membership"],
   ["Feedback", "#feedback"],
   ["FAQ", "#faq"],
 ] as const;
@@ -47,16 +48,26 @@ export function Navbar({ brandName }: { brandName: string }) {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-6 md:flex">
           {links.map(([label, href]) => (
-            <a
-              key={href}
-              href={href}
-              className="text-sm font-medium text-sage/80 transition hover:text-sage"
-            >
-              {label}
-            </a>
+            href.startsWith("/") ? (
+              <Link
+                key={href}
+                href={href}
+                className="text-sm font-medium text-sage/80 transition hover:text-sage"
+              >
+                {label}
+              </Link>
+            ) : (
+              <a
+                key={href}
+                href={href}
+                className="text-sm font-medium text-sage/80 transition hover:text-sage"
+              >
+                {label}
+              </a>
+            )
           ))}
           <a
-            href="#booking"
+            href="#contact"
             className="rounded-full bg-sage px-5 py-2 text-sm font-semibold text-ivory shadow-glow transition hover:bg-sage/88"
           >
             Book Now
@@ -79,17 +90,28 @@ export function Navbar({ brandName }: { brandName: string }) {
         <div className="border-t border-gold/15 bg-white/60 px-4 py-4 md:hidden backdrop-blur">
           <div className="flex flex-col gap-4">
             {links.map(([label, href]) => (
-              <a
-                key={href}
-                href={href}
-                className="text-sm font-medium text-sage/85"
-                onClick={() => setOpen(false)}
-              >
-                {label}
-              </a>
+              href.startsWith("/") ? (
+                <Link
+                  key={href}
+                  href={href}
+                  className="text-sm font-medium text-sage/85"
+                  onClick={() => setOpen(false)}
+                >
+                  {label}
+                </Link>
+              ) : (
+                <a
+                  key={href}
+                  href={href}
+                  className="text-sm font-medium text-sage/85"
+                  onClick={() => setOpen(false)}
+                >
+                  {label}
+                </a>
+              )
             ))}
             <a
-              href="#booking"
+              href="#contact"
               className="rounded-full bg-sage px-4 py-2.5 text-center text-sm font-semibold text-ivory"
               onClick={() => setOpen(false)}
             >
