@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, Lock, Sparkles, Star, CheckCircle2, ChevronDown, CreditCard } from "lucide-react";
+import { Crown, Lock, Sparkles, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -13,8 +13,6 @@ import {
   type UserProfile,
 } from "@/lib/supabase-auth";
 
-// ── suppress unused warning ──
-void (Star, CheckCircle2, CreditCard);
 
 const BENEFITS = [
   { icon: "🎬", title: "Exclusive Video Library",     desc: "Unlimited access to all premium astrology videos."           },
