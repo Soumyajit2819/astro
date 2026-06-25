@@ -13,9 +13,6 @@ import {
   type UserProfile,
 } from "@/lib/supabase-auth";
 
-declare global {
-  interface Window { Razorpay: new (o: RazorpayOptions) => { open: () => void }; }
-}
 interface RazorpayOptions {
   key: string; amount: number; currency: string; name: string;
   description: string; order_id: string;
@@ -24,6 +21,8 @@ interface RazorpayOptions {
   handler: (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => void;
   modal?: { ondismiss?: () => void };
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
 export default function MembershipPurchasePage() {
   const router = useRouter();
@@ -73,11 +72,13 @@ export default function MembershipPurchasePage() {
       const order = await orderRes.json();
 
       const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-      if (!keyId || typeof window.Razorpay === "undefined")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const RzpClass = (window as any).Razorpay as new (o: RazorpayOptions) => { open: () => void };
+      if (!keyId || !RzpClass)
         throw new Error("Razorpay not loaded. Please refresh.");
 
       await new Promise<void>((resolve, reject) => {
-        const rzp = new window.Razorpay({
+        const rzp = new RzpClass({
           key: keyId, amount: order.amount, currency: order.currency,
           name: "AstroGenZ", description: "Premium Membership",
           order_id: order.id,
