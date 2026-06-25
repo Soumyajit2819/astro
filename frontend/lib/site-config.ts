@@ -72,7 +72,7 @@ export type SiteConfig = {
 };
 
 export const defaultSiteConfig: SiteConfig = {
-  brandName: "AstroVerse",
+  brandName: "AstroGenZ",
   heroTagline: "Vedic astrology, numerology & spiritual guidance",
   heroTitle: "Simple astrology website for consultations and classes with direct UPI booking.",
   heroDescription:

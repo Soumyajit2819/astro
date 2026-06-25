@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AstroVerse — Vedic Astrology & Spiritual Consultations",
-  description: "Book personalised Vedic astrology consultations, numerology readings, and spiritual guidance with AstroVerse. Pay via UPI and connect directly with your astrologer."
+  title: "AstroGenZ — Vedic Astrology & Spiritual Consultations",
+  description: "Book personalised Vedic astrology consultations, numerology readings, and spiritual guidance with AstroGenZ. Pay via Razorpay and connect directly with your astrologer."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

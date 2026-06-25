@@ -23,7 +23,7 @@ export function AnnouncementBanner({ classServiceId }: AnnouncementBannerProps) 
       <div
         className="offer-banner-bg relative w-full py-4 px-4 sm:px-6 lg:px-8"
         style={{
-          background: "linear-gradient(135deg, #1a2518 0%, #2d3d2a 25%, #3e5438 50%, #6b4c0a 75%, #c89b3c 100%)",
+          background: "linear-gradient(135deg, #3a1005 0%, #5a1e0a 25%, #7a2810 50%, #8b1a1a 75%, #c0392b 100%)",
           backgroundSize: "300% 300%",
           animation: "bannerShift 6s ease infinite",
         }}
@@ -88,7 +88,7 @@ export function AnnouncementBanner({ classServiceId }: AnnouncementBannerProps) 
             onClick={handleEnroll}
             className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition hover:scale-105 active:scale-95"
             style={{
-              background: "linear-gradient(135deg, #c89b3c, #fde68a, #c89b3c)",
+              background: "linear-gradient(135deg, #c0392b, #ff6b6b, #c0392b)",
               backgroundSize: "200% 100%",
               animation: "btnShine 3s linear infinite",
               color: "#1a2518",

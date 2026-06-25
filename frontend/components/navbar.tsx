@@ -12,16 +12,20 @@ const links = [
   ["FAQ", "#faq"],
 ] as const;
 
-/* ── AstroVerse Logo — uses the uploaded PNG ── */
+/* ── AstroGenZ Logo — uses the uploaded PNG ── */
 function AstroVerseLogo({ size = 40 }: { size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/astroverse-logo.png"
-      alt="AstroVerse"
+      src="/astrogenz-logo.png"
+      alt="AstroGenZ"
       width={size}
       height={size}
       className="rounded-md object-contain"
+      onError={(e) => {
+        // fallback inline SVG if image not found
+        (e.target as HTMLImageElement).style.display = "none";
+      }}
     />
   );
 }

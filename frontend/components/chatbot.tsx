@@ -362,8 +362,8 @@ export function Chatbot({ config }: { config: SiteConfig }) {
         onClick={() => setOpen((v) => !v)}
         className="fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
         style={{
-          background: "linear-gradient(135deg, #2d3d2a 0%, #3e5438 50%, #52624f 100%)",
-          boxShadow: "0 0 0 3px rgba(82,98,79,0.25), 0 8px 24px rgba(30,45,28,0.40)",
+          background: "linear-gradient(135deg, #3a1005 0%, #5a1e0a 50%, #7a2810 100%)",
+          boxShadow: "0 0 0 3px rgba(90,30,10,0.25), 0 8px 24px rgba(58,16,5,0.40)",
         }}
       >
         {open ? (
@@ -393,7 +393,7 @@ export function Chatbot({ config }: { config: SiteConfig }) {
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3"
-            style={{ background: "linear-gradient(135deg, #2d3d2a 0%, #3e5438 60%, #52624f 100%)" }}>
+            style={{ background: "linear-gradient(135deg, #3a1005 0%, #5a1e0a 60%, #7a2810 100%)" }}>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
               style={{ background: "rgba(247,241,227,0.15)" }}>
               <BotAvatar />

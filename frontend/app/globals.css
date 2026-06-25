@@ -12,10 +12,11 @@ html {
 
 body {
   min-height: 100vh;
-  background-image: radial-gradient(circle at top, rgba(200, 155, 60, 0.18), transparent 28%),
-    radial-gradient(circle at 0% 25%, rgba(82, 98, 79, 0.08), transparent 20%),
-    linear-gradient(165deg, #fcf8ef 0%, #f7f1e3 48%, #efe6d1 100%);
-  color: #394436;
+  background-image:
+    radial-gradient(circle at top, rgba(139, 26, 26, 0.10), transparent 28%),
+    radial-gradient(circle at 0% 25%, rgba(90, 30, 10, 0.06), transparent 20%),
+    linear-gradient(165deg, #f5f0e8 0%, #f0ebe0 48%, #e8e0d0 100%);
+  color: #3a1005;
 }
 
 section {
