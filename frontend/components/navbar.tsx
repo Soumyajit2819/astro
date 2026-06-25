@@ -12,18 +12,17 @@ const links = [
   ["FAQ", "#faq"],
 ] as const;
 
-/* ── AstroGenZ Logo — uses the uploaded PNG ── */
-function AstroVerseLogo({ size = 40 }: { size?: number }) {
+/* ── AstroGenZ Logo — uses the uploaded JPEG ── */
+function AstroVerseLogo({ size = 52 }: { size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/astrogenz-logo.png"
+      src="/astrogenz-logo.jpeg"
       alt="AstroGenZ"
       width={size}
       height={size}
-      className="rounded-md object-contain"
+      className="rounded-lg object-contain"
       onError={(e) => {
-        // fallback inline SVG if image not found
         (e.target as HTMLImageElement).style.display = "none";
       }}
     />
@@ -39,7 +38,7 @@ export function Navbar({ brandName }: { brandName: string }) {
 
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2 text-sage">
-          <AstroVerseLogo size={40} />
+          <AstroVerseLogo size={52} />
           <span className="font-display text-xl font-semibold tracking-wide text-sage">
             {brandName}
           </span>
