@@ -9,11 +9,26 @@ import {
   getUserProfile,
   getPremiumVideos,
   signOut,
-  supabaseAuth,
   type UserProfile,
   type PremiumVideo,
 } from "@/lib/supabase-auth";
 import { PremiumVideoCard } from "@/components/premium-video-card";
+
+/** Sync profile server-side (bypasses RLS) */
+async function syncProfile(user: { id: string; email?: string | null; user_metadata?: Record<string, string> }) {
+  try {
+    await fetch("/api/membership/sync-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: user.id,
+        email: user.email ?? "",
+        full_name: user.user_metadata?.full_name ?? null,
+        avatar_url: user.user_metadata?.avatar_url ?? null,
+      }),
+    });
+  } catch { /* non-fatal */ }
+}
 
 export default function PremiumLibraryPage() {
   const router = useRouter();
@@ -28,19 +43,10 @@ export default function PremiumLibraryPage() {
       const session = await getSession();
       if (!session?.user) { router.replace("/membership"); return; }
 
-      let p = await getUserProfile(session.user.id);
-      // Create profile if trigger didn't fire yet
-      if (!p) {
-        await supabaseAuth.from("profiles").upsert({
-          id: session.user.id,
-          email: session.user.email,
-          full_name: session.user.user_metadata?.full_name ?? null,
-          avatar_url: session.user.user_metadata?.avatar_url ?? null,
-          premium: false,
-        }, { onConflict: "id" });
-        p = await getUserProfile(session.user.id);
-      }
+      // Ensure profile row exists
+      await syncProfile(session.user);
 
+      const p = await getUserProfile(session.user.id);
       if (!p?.premium) { router.replace("/membership"); return; }
 
       setProfile(p);
@@ -79,7 +85,7 @@ export default function PremiumLibraryPage() {
 
   return (
     <div className="min-h-screen bg-ivory font-body text-sage">
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-sage/10 bg-ivory/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
@@ -102,12 +108,10 @@ export default function PremiumLibraryPage() {
         </div>
       </header>
 
-      {/* ── Hero banner ── */}
+      {/* Hero banner */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div
-          className="rounded-[2rem] px-8 py-10 text-center"
-          style={{ background: "linear-gradient(135deg, #3a1005, #5a1e0a, #8b1a1a)" }}
-        >
+        <div className="rounded-[2rem] px-8 py-10 text-center"
+          style={{ background: "linear-gradient(135deg, #3a1005, #5a1e0a, #8b1a1a)" }}>
           <Crown className="mx-auto h-10 w-10 text-amber-300 mb-3" />
           <h1 className="font-display text-3xl font-semibold text-white">
             Welcome back, {profile?.full_name?.split(" ")[0] ?? "Member"} 🙏
@@ -118,29 +122,20 @@ export default function PremiumLibraryPage() {
         </div>
       </div>
 
-      {/* ── Search + Filters ── */}
+      {/* Search + Filters */}
       <div className="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Search */}
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sage/40" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search videos…"
-              className="w-full rounded-full border border-sage/15 bg-white py-2.5 pl-10 pr-4 text-sm text-sage outline-none placeholder:text-sage/40 focus:border-sage/40"
-            />
+              className="w-full rounded-full border border-sage/15 bg-white py-2.5 pl-10 pr-4 text-sm text-sage outline-none placeholder:text-sage/40 focus:border-sage/40" />
           </div>
-          {/* Category chips */}
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => (
-              <button key={cat} type="button"
-                onClick={() => setActiveCategory(cat)}
+              <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
                 className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                  activeCategory === cat
-                    ? "bg-sage text-ivory"
-                    : "border border-sage/20 bg-white text-sage hover:bg-sage/5"
+                  activeCategory === cat ? "bg-sage text-ivory" : "border border-sage/20 bg-white text-sage hover:bg-sage/5"
                 }`}>
                 {cat}
               </button>
@@ -149,7 +144,7 @@ export default function PremiumLibraryPage() {
         </div>
       </div>
 
-      {/* ── Video grid ── */}
+      {/* Video grid */}
       <div className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
         {filtered.length === 0 ? (
           <div className="py-20 text-center">

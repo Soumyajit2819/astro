@@ -61,3 +61,25 @@ do $$ begin
     with check (true);
 exception when duplicate_object then null;
 end $$;
+
+-- ============================================================
+-- Fix: Allow users to insert their own profile on first login
+-- Run this if profile rows are not being created after Google sign-in
+-- ============================================================
+
+do $$ begin
+  create policy "profiles: own insert"
+    on public.profiles for insert
+    to public
+    with check (auth.uid() = id);
+exception when duplicate_object then null;
+end $$;
+
+-- Also allow upsert (needed for onConflict upsert in the app)
+do $$ begin
+  create policy "profiles: anon insert"
+    on public.profiles for insert
+    to public
+    with check (true);
+exception when duplicate_object then null;
+end $$;
