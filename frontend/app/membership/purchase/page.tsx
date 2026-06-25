@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CreditCard, Loader2, Upload } from "lucide-react";
+import {
+  CheckCircle2, CreditCard, Loader2, Tag, XCircle, Sparkles, AlertCircle
+} from "lucide-react";
 import Link from "next/link";
 import {
   getSession,
   getUserProfile,
   getMembershipSettings,
-  submitMembershipPurchase,
   type UserProfile,
 } from "@/lib/supabase-auth";
 
@@ -21,75 +22,88 @@ interface RazorpayOptions {
   modal?: { ondismiss?: () => void };
 }
 
-/** Sync profile server-side */
+type CouponState = {
+  code: string;
+  coupon_id: number;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  discount_amount: number;
+  final_price: number;
+  message: string;
+};
+
 async function syncProfile(user: { id: string; email?: string | null; user_metadata?: Record<string, string> }) {
   try {
     await fetch("/api/membership/sync-profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: user.id,
-        email: user.email ?? "",
-        full_name: user.user_metadata?.full_name ?? null,
-        avatar_url: user.user_metadata?.avatar_url ?? null,
-      }),
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: user.id, email: user.email ?? "", full_name: user.user_metadata?.full_name ?? null, avatar_url: user.user_metadata?.avatar_url ?? null }),
     });
   } catch { /* non-fatal */ }
 }
 
 export default function MembershipPurchasePage() {
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [price, setPrice] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<"pay" | "proof" | "done">("pay");
-  const [paying, setPaying] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [paymentId, setPaymentId] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [profile, setProfile]     = useState<UserProfile | null>(null);
+  const [price, setPrice]         = useState<number | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [step, setStep]           = useState<"pay" | "activating" | "done" | "error">("pay");
+  const [paying, setPaying]       = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError]     = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponState | null>(null);
+
+  const finalPrice = appliedCoupon ? appliedCoupon.final_price : (price ?? 0);
 
   useEffect(() => {
-    // Load Razorpay script
     if (!document.getElementById("rzp-script")) {
       const s = document.createElement("script");
-      s.id = "rzp-script";
-      s.src = "https://checkout.razorpay.com/v1/checkout.js";
-      s.async = true;
+      s.id = "rzp-script"; s.src = "https://checkout.razorpay.com/v1/checkout.js"; s.async = true;
       document.body.appendChild(s);
     }
-
     const init = async () => {
       const session = await getSession();
       if (!session?.user) { router.replace("/membership"); return; }
-
       await syncProfile(session.user);
-
-      const [p, s] = await Promise.all([
-        getUserProfile(session.user.id),
-        getMembershipSettings(),
-      ]);
+      const [p, s] = await Promise.all([getUserProfile(session.user.id), getMembershipSettings()]);
       if (p?.premium) { router.replace("/membership/premium"); return; }
-      setProfile(p);
-      setPrice(s?.membership_price ?? null);
-      setLoading(false);
+      setProfile(p); setPrice(s?.membership_price ?? null); setLoading(false);
     };
     void init();
   }, [router]);
 
+  const applyCoupon = async () => {
+    if (!couponCode.trim() || !profile || !price) return;
+    setCouponLoading(true); setCouponError(null); setAppliedCoupon(null);
+    try {
+      const res = await fetch("/api/membership/validate-coupon", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode.trim(), user_id: profile.id, base_price: price }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedCoupon(data as CouponState);
+        setCouponError(null);
+      } else {
+        setCouponError(data.message ?? "Invalid coupon.");
+      }
+    } catch { setCouponError("Could not validate coupon. Try again."); }
+    finally { setCouponLoading(false); }
+  };
+
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponCode(""); setCouponError(null); };
+
   const handleRazorpay = async () => {
     if (!profile || !price) return;
     setPaying(true); setError(null);
-
     try {
       const orderRes = await fetch("/api/payments/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: price, currency: "INR", receipt: `membership_${Date.now()}` }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: finalPrice, currency: "INR", receipt: `membership_${Date.now()}` }),
       });
       if (!orderRes.ok) throw new Error("Failed to create payment order.");
       const order = await orderRes.json();
-
       const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const RzpClass = (window as any).Razorpay as new (o: RazorpayOptions) => { open: () => void };
@@ -104,66 +118,31 @@ export default function MembershipPurchasePage() {
           theme: { color: "#5a1e0a" },
           handler: async (response) => {
             try {
-              const vr = await fetch("/api/payments/verify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(response),
+              setStep("activating");
+              const activateRes = await fetch("/api/membership/activate", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id:  response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature:  response.razorpay_signature,
+                  user_id:    profile.id,
+                  amount_paid: finalPrice,
+                  coupon_id:  appliedCoupon?.coupon_id ?? null,
+                }),
               });
-              const verified = await vr.json();
-              if (!verified.verified) throw new Error("Payment verification failed.");
-              setPaymentId(response.razorpay_payment_id);
-              setStep("proof");
+              const result = await activateRes.json();
+              if (!activateRes.ok || result.error) throw new Error(result.error ?? "Activation failed.");
+              setStep("done");
               resolve();
-            } catch (e) { reject(e); }
+            } catch (e) { setStep("error"); setError(e instanceof Error ? e.message : "Activation failed."); reject(e); }
           },
           modal: { ondismiss: () => { setPaying(false); resolve(); } },
         });
         rzp.open();
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Payment failed. Please try again.");
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  const handleProofUpload = async () => {
-    const file = fileRef.current?.files?.[0];
-    if (!file || !profile) return;
-    setUploading(true); setError(null);
-
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `membership-proofs/${Date.now()}-${profile.id}.${ext}`;
-
-      const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/astrologer-images/${path}`, {
-        method: "POST",
-        headers: {
-          apikey: supabaseAnon,
-          Authorization: `Bearer ${supabaseAnon}`,
-          "x-upsert": "true",
-        },
-        body: file,
-      });
-      const proofUrl = uploadRes.ok
-        ? `${supabaseUrl}/storage/v1/object/public/astrologer-images/${path}`
-        : undefined;
-
-      await submitMembershipPurchase({
-        userId: profile.id,
-        amountPaid: price!,
-        paymentId,
-        paymentProofUrl: proofUrl,
-      });
-
-      setStep("done");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-    }
+      if (step !== "error") setError(e instanceof Error ? e.message : "Payment failed.");
+    } finally { setPaying(false); }
   };
 
   if (loading) return (
@@ -175,86 +154,34 @@ export default function MembershipPurchasePage() {
   return (
     <div className="min-h-screen bg-ivory font-body text-sage">
       <div className="mx-auto max-w-lg px-4 py-12 sm:px-6">
-        <Link href="/membership" className="text-sm text-sage/60 hover:text-sage">← Back to Membership</Link>
+        <Link href="/membership" className="text-sm text-sage/60 hover:text-sage">← Back</Link>
 
         <div className="mt-6 rounded-[2rem] border border-sage/10 bg-white/80 p-8 shadow-glow">
 
-          {/* ── Step 1: Pay ── */}
-          {step === "pay" && (
-            <>
-              <h1 className="font-display text-2xl text-sage">Complete Your Purchase</h1>
-              <p className="mt-2 text-sm text-sage/65">
-                Signed in as <strong>{profile?.email}</strong>
-              </p>
-              <div className="mt-6 rounded-[1.5rem] border border-gold/20 bg-gold/8 px-6 py-5">
-                <p className="text-xs uppercase tracking-[0.2em] text-gold font-medium">AstroGenZ Premium</p>
-                <p className="mt-1 font-display text-3xl font-bold text-sage">
-                  Rs. {price?.toLocaleString("en-IN")}
-                </p>
-                <p className="mt-1 text-xs text-sage/55">Lifetime access · One-time payment · No renewal</p>
-              </div>
-              {error && <p className="mt-4 rounded-2xl border border-ember/20 bg-ember/5 px-4 py-3 text-sm text-ember">{error}</p>}
-              <button onClick={handleRazorpay} disabled={paying}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-4 text-base font-semibold text-ivory shadow-glow transition hover:bg-sage/85 disabled:opacity-60">
-                {paying
-                  ? <><Loader2 className="h-5 w-5 animate-spin" /> Opening Razorpay…</>
-                  : <><CreditCard className="h-5 w-5" /> Pay Rs. {price?.toLocaleString("en-IN")} via Razorpay</>
-                }
-              </button>
-              <p className="mt-3 text-center text-xs text-sage/50">Secured by Razorpay · UPI · Cards · Net Banking · Wallets</p>
-            </>
+          {/* ── Activating ── */}
+          {step === "activating" && (
+            <div className="text-center py-8">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-sage mb-4" />
+              <p className="font-display text-xl text-sage">Activating your membership…</p>
+              <p className="mt-2 text-sm text-sage/60">Please wait, do not close this page.</p>
+            </div>
           )}
 
-          {/* ── Step 2: Upload proof ── */}
-          {step === "proof" && (
-            <>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sage">Payment successful!</p>
-                  <p className="text-xs text-sage/60">Payment ID: {paymentId}</p>
-                </div>
-              </div>
-              <p className="text-sm text-sage/70 leading-6">
-                Please upload your payment screenshot. The admin will verify it and activate your membership.
-              </p>
-              <div className="mt-5 rounded-[1.5rem] border border-dashed border-gold/40 bg-gold/5 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-sage">
-                  <Upload className="h-4 w-4 text-gold" /> Upload payment screenshot
-                </div>
-                <input ref={fileRef} type="file" accept="image/*"
-                  className="block w-full text-sm text-sage file:mr-4 file:rounded-full file:border-0 file:bg-sage file:px-4 file:py-2 file:font-medium file:text-ivory" />
-              </div>
-              {error && <p className="mt-3 text-sm text-ember">{error}</p>}
-              <button onClick={handleProofUpload} disabled={uploading}
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-3.5 text-sm font-semibold text-ivory transition hover:bg-sage/85 disabled:opacity-60">
-                {uploading
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</>
-                  : "Submit Membership Request"
-                }
-              </button>
-            </>
-          )}
-
-          {/* ── Step 3: Done ── */}
+          {/* ── Success ── */}
           {step === "done" && (
             <div className="text-center">
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
                 <CheckCircle2 className="h-8 w-8 text-emerald-600" />
               </div>
-              <h2 className="font-display text-2xl text-sage">Request Submitted! 🙏</h2>
+              <h2 className="font-display text-2xl text-sage">Membership Activated! 🎉</h2>
               <p className="mt-3 text-sm leading-6 text-sage/70">
-                Your membership request has been submitted successfully. The admin will verify your payment and activate your account within a few hours.
+                Your premium membership is now active. You have full access to the AstroGenZ Premium Video Library.
               </p>
-              <p className="mt-2 text-sm font-medium text-sage">
-                Once approved, you can access the full Premium Video Library.
-              </p>
+              <p className="mt-2 text-sm font-medium text-sage">Welcome to the premium community! 🙏</p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Link href="/membership"
-                  className="inline-flex items-center justify-center rounded-full bg-sage px-6 py-3 text-sm font-semibold text-ivory transition hover:bg-sage/85">
-                  Back to Membership
+                <Link href="/membership/premium"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-sage px-6 py-3 text-sm font-semibold text-ivory transition hover:bg-sage/85">
+                  <Sparkles className="h-4 w-4" /> Open Premium Library
                 </Link>
                 <Link href="/"
                   className="inline-flex items-center justify-center rounded-full border border-sage/20 bg-white px-6 py-3 text-sm font-semibold text-sage transition hover:bg-ivory">
@@ -264,6 +191,102 @@ export default function MembershipPurchasePage() {
             </div>
           )}
 
+          {/* ── Error ── */}
+          {step === "error" && (
+            <div className="text-center">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                <AlertCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <h2 className="font-display text-xl text-sage">Something went wrong</h2>
+              <p className="mt-2 text-sm text-sage/70">{error}</p>
+              <p className="mt-2 text-sm text-sage/60">
+                If money was deducted, contact us on WhatsApp — we will manually activate your membership.
+              </p>
+              <button onClick={() => { setStep("pay"); setError(null); setPaying(false); }}
+                className="mt-5 inline-flex items-center justify-center rounded-full bg-sage px-6 py-3 text-sm font-semibold text-ivory">
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* ── Payment form ── */}
+          {step === "pay" && (
+            <>
+              <h1 className="font-display text-2xl text-sage">Complete Your Purchase</h1>
+              <p className="mt-1 text-sm text-sage/65">Signed in as <strong>{profile?.email}</strong></p>
+
+              {/* Price card */}
+              <div className="mt-5 rounded-[1.5rem] border border-gold/20 bg-gold/8 px-6 py-5">
+                <p className="text-xs uppercase tracking-[0.2em] text-gold font-medium">AstroGenZ Premium</p>
+                <div className="mt-2 flex items-end justify-between gap-4">
+                  <div>
+                    {appliedCoupon ? (
+                      <>
+                        <p className="text-sm text-sage/50 line-through">Rs. {price?.toLocaleString("en-IN")}</p>
+                        <p className="font-display text-3xl font-bold text-sage">
+                          Rs. {finalPrice.toLocaleString("en-IN")}
+                        </p>
+                        <p className="text-xs text-emerald-600 font-medium mt-0.5">
+                          You save Rs. {appliedCoupon.discount_amount.toLocaleString("en-IN")}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-display text-3xl font-bold text-sage">
+                        Rs. {price?.toLocaleString("en-IN")}
+                      </p>
+                    )}
+                    <p className="text-xs text-sage/55 mt-1">Lifetime access · No renewal · Instant activation</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coupon input */}
+              <div className="mt-5 rounded-[1.25rem] border border-sage/10 bg-white/80 p-4">
+                <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-sage">
+                  <Tag className="h-4 w-4 text-gold" /> Have a coupon code?
+                </p>
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-700">{appliedCoupon.code} — {appliedCoupon.message}</p>
+                    </div>
+                    <button type="button" onClick={removeCoupon}
+                      className="inline-flex items-center gap-1 rounded-full border border-ember/30 bg-white px-3 py-1 text-xs font-medium text-ember">
+                      <XCircle className="h-3.5 w-3.5" /> Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="text" value={couponCode}
+                      onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyCoupon(); } }}
+                      placeholder="Enter coupon code"
+                      className="flex-1 rounded-2xl border border-sage/12 bg-white px-4 py-2 text-sm text-sage outline-none placeholder:text-sage/40 focus:border-gold" />
+                    <button type="button" onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()}
+                      className="inline-flex items-center rounded-full bg-sage px-4 py-2 text-xs font-semibold text-ivory disabled:opacity-50">
+                      {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
+                    </button>
+                  </div>
+                )}
+                {couponError && <p className="mt-2 text-xs text-ember">{couponError}</p>}
+              </div>
+
+              {error && (
+                <p className="mt-4 rounded-2xl border border-ember/20 bg-ember/5 px-4 py-3 text-sm text-ember">{error}</p>
+              )}
+
+              <button onClick={handleRazorpay} disabled={paying}
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sage px-6 py-4 text-base font-semibold text-ivory shadow-glow transition hover:bg-sage/85 disabled:opacity-60">
+                {paying
+                  ? <><Loader2 className="h-5 w-5 animate-spin" /> Opening Razorpay…</>
+                  : <><CreditCard className="h-5 w-5" /> Pay Rs. {finalPrice.toLocaleString("en-IN")} via Razorpay</>
+                }
+              </button>
+              <p className="mt-3 text-center text-xs text-sage/50">
+                Secured by Razorpay · Membership activates instantly after payment
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
