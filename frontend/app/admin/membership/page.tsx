@@ -79,7 +79,7 @@ const IC = "mt-1.5 w-full rounded-2xl border border-sage/15 bg-white px-4 py-2.5
    GOOGLE SIGN-IN GATE
    Admin signs in here independently — no member login needed.
    ══════════════════════════════════════════════════════════ */
-function AdminSignInGate({ onSignedIn }: { onSignedIn: () => void }) {
+function AdminSignInGate() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
@@ -142,27 +142,16 @@ export default function MembershipAdminPage() {
   const [authState, setAuthState] = useState<"loading" | "unauthenticated" | "authenticated">("loading");
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
-  // Check Supabase session on mount + listen for auth changes (e.g. after OAuth redirect)
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabaseAuth.auth.getSession();
-      if (session?.user) {
-        setAdminEmail(session.user.email ?? null);
-        setAuthState("authenticated");
-      } else {
-        setAuthState("unauthenticated");
-      }
+      if (session?.user) { setAdminEmail(session.user.email ?? null); setAuthState("authenticated"); }
+      else { setAuthState("unauthenticated"); }
     };
     void checkSession();
-
     const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setAdminEmail(session.user.email ?? null);
-        setAuthState("authenticated");
-      } else {
-        setAdminEmail(null);
-        setAuthState("unauthenticated");
-      }
+      if (session?.user) { setAdminEmail(session.user.email ?? null); setAuthState("authenticated"); }
+      else { setAdminEmail(null); setAuthState("unauthenticated"); }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -172,7 +161,6 @@ export default function MembershipAdminPage() {
     setAuthState("unauthenticated");
   };
 
-  // Show loading spinner
   if (authState === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-ivory">
@@ -180,13 +168,18 @@ export default function MembershipAdminPage() {
       </div>
     );
   }
-
-  // Show sign-in gate if not authenticated
   if (authState === "unauthenticated") {
-    return <AdminSignInGate onSignedIn={() => setAuthState("authenticated")} />;
+    return <AdminSignInGate />;
   }
+  // Authenticated — render the full admin content as a separate component
+  // so ALL data-management hooks are always called unconditionally inside it.
+  return <AdminContent adminEmail={adminEmail} onSignOut={handleSignOut} />;
+}
 
-  const [tab, setTab]         = useState<Tab>("settings");
+/* ══════════════════════════════════════════════════════════
+   ADMIN CONTENT — all data hooks here, never conditionally
+   ══════════════════════════════════════════════════════════ */
+function AdminContent({ adminEmail, onSignOut }: { adminEmail: string | null; onSignOut: () => void }) {  const [tab, setTab]         = useState<Tab>("settings");
   const [toastMsg, setToast]  = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -358,7 +351,7 @@ export default function MembershipAdminPage() {
               className="inline-flex items-center gap-2 rounded-full border border-sage/15 px-4 py-2 text-sm text-sage hover:bg-ivory/80">
               <RefreshCcw className="h-4 w-4" /> Refresh
             </button>
-            <button onClick={handleSignOut}
+            <button onClick={onSignOut}
               className="inline-flex items-center gap-2 rounded-full border border-sage/15 px-4 py-2 text-sm text-sage/70 hover:text-sage">
               <LogOut className="h-4 w-4" /> Sign out
             </button>
