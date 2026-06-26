@@ -61,6 +61,24 @@ export type MembershipPurchase = {
   created_at: string;
 };
 
+export type LiveEvent = {
+  id: number;
+  title: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  event_date: string;
+  youtube_link: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type AdminSettings = {
+  id: number;
+  key: string;
+  value: string | null;
+  updated_at: string;
+};
+
 // ── Auth helpers ───────────────────────────────────────────
 
 /** Sign in with Google OAuth */
