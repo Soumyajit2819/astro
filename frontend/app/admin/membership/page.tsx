@@ -1,153 +1,249 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, Plus, RefreshCcw, Save, Tag, Trash2, XCircle } from "lucide-react";
-import { supabaseAuth, type MembershipSettings, type MembershipPurchase, type PremiumVideo } from "@/lib/supabase-auth";
+/**
+ * /admin/membership
+ * ──────────────────
+ * Membership admin panel — integrated into the existing /admin shell.
+ * Authentication: astro_admin_session cookie (verified by middleware) +
+ *                 Supabase JWT with profiles.is_admin=true (verified per API call).
+ * All writes go through /api/admin/membership/* routes (Dual_Auth).
+ * No direct Supabase client writes. No PIN gate. No sessionStorage.
+ */
 
-type PurchaseWithEmail = MembershipPurchase & { profiles?: { email: string; full_name: string } | null };
+import { useEffect, useState, useCallback } from "react";
+import {
+  CheckCircle2, Plus, RefreshCcw, Save, Tag, Trash2, XCircle,
+  Users, Video, Radio, Settings, FileText, AlertCircle
+} from "lucide-react";
+import { supabaseAuth } from "@/lib/supabase-auth";
 
-type MembershipCoupon = {
-  id: number;
-  code: string;
-  discount_type: "percent" | "fixed";
-  discount_value: number;
-  max_uses: number | null;
-  used_count: number;
-  expires_at: string | null;
-  is_active: boolean;
+/* ── Types ────────────────────────────────────────────────── */
+type Tab = "settings" | "members" | "videos" | "live-events" | "coupons" | "audit";
+
+type MemberRow = {
+  id: string; email: string | null; full_name: string | null;
+  membership_status: "none" | "active" | "expired";
+  expiry_date: string | null; premium: boolean;
+  latest_purchase: { amount_paid: number | null; purchase_date: string | null; purchase_type: string } | null;
+};
+
+type VideoRow = {
+  id: number; title: string; description: string | null;
+  video_url: string; thumbnail_url: string | null;
+  category: string; status: "published" | "draft";
+  sort_order: number; is_active: boolean;
+};
+
+type LiveEvent = {
+  id: number; title: string; description: string | null;
+  thumbnail_url: string | null; event_date: string;
+  youtube_link: string; is_active: boolean;
+};
+
+type CouponRow = {
+  id: number; code: string; discount_type: "percent" | "fixed";
+  discount_value: number; max_uses: number | null; used_count: number;
+  expires_at: string | null; is_active: boolean;
+};
+
+type AuditEntry = {
+  id: number; action: string; performed_by: string;
+  target_user_id: string | null; metadata: Record<string, unknown> | null;
   created_at: string;
 };
 
-type Tab = "settings" | "purchases" | "videos" | "coupons";
+type Settings = { membership_price: string; membership_enabled: boolean; whatsapp_number: string };
 
+/* ── API helper — always sends Supabase JWT ─────────────── */
+async function adminFetch(path: string, method = "GET", body?: object): Promise<Response> {
+  const session = await supabaseAuth.auth.getSession();
+  const jwt = session.data.session?.access_token ?? "";
+  return fetch(path, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+/* ── New video/event/coupon default states ───────────────── */
+const DEFAULT_VIDEO  = { title:"", description:"", video_url:"", thumbnail_url:"", category:"General", status:"published" as "published"|"draft", sort_order:0 };
+const DEFAULT_EVENT  = { title:"", description:"", thumbnail_url:"", event_date:"", youtube_link:"", is_active:true };
+const DEFAULT_COUPON = { code:"", discount_type:"percent" as "percent"|"fixed", discount_value:"", max_uses:"", expires_at:"", is_active:true };
+
+const IC = "mt-1.5 w-full rounded-2xl border border-sage/15 bg-white px-4 py-2.5 text-sm text-sage outline-none focus:border-sage/40";
+
+/* ══════════════════════════════════════════════════════════
+   MAIN PAGE COMPONENT
+   Protected by middleware (astro_admin_session cookie).
+   No PIN gate — the cookie + middleware handle page-level auth.
+   ══════════════════════════════════════════════════════════ */
 export default function MembershipAdminPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("settings");
-  const [settings, setSettings]   = useState<MembershipSettings | null>(null);
-  const [price, setPrice]         = useState("");
-  const [enabled, setEnabled]     = useState(true);
-  const [purchases, setPurchases] = useState<PurchaseWithEmail[]>([]);
-  const [videos, setVideos]       = useState<PremiumVideo[]>([]);
-  const [coupons, setCoupons]     = useState<MembershipCoupon[]>([]);
-  const [status, setStatus]       = useState<string | null>(null);
-  const [loading, setLoading]     = useState(true);
+  const [tab, setTab]         = useState<Tab>("settings");
+  const [toastMsg, setToast]  = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  /* New video form */
-  const [newVideo, setNewVideo] = useState({
-    title: "", description: "", video_url: "", thumbnail_url: "", category: "General",
-  });
+  /* ── Settings state ── */
+  const [sett, setSett] = useState<Settings>({ membership_price:"", membership_enabled:true, whatsapp_number:"" });
 
-  /* New coupon form */
-  const [newCoupon, setNewCoupon] = useState({
-    code: "", discount_type: "percent" as "percent" | "fixed",
-    discount_value: "", max_uses: "", expires_at: "", is_active: true,
-  });
+  /* ── Members state ── */
+  const [members, setMembers] = useState<MemberRow[]>([]);
 
-  const load = async () => {
+  /* ── Videos state ── */
+  const [videos, setVideos]     = useState<VideoRow[]>([]);
+  const [newVideo, setNewVideo] = useState(DEFAULT_VIDEO);
+
+  /* ── Live events state ── */
+  const [events, setEvents]     = useState<LiveEvent[]>([]);
+  const [newEvent, setNewEvent] = useState(DEFAULT_EVENT);
+
+  /* ── Coupons state ── */
+  const [coupons, setCoupons]     = useState<CouponRow[]>([]);
+  const [newCoupon, setNewCoupon] = useState(DEFAULT_COUPON);
+
+  /* ── Audit state ── */
+  const [audit, setAudit] = useState<AuditEntry[]>([]);
+
+  const toast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+
+  /* ── Load all data ── */
+  const load = useCallback(async () => {
     setLoading(true);
-    const [s, p, v, c] = await Promise.all([
-      supabaseAuth.from("membership_settings").select("*").limit(1).single(),
-      supabaseAuth.from("membership_purchases")
-        .select("*, profiles(email, full_name)")
-        .order("created_at", { ascending: false }),
-      supabaseAuth.from("premium_videos").select("*").order("sort_order", { ascending: true }),
-      supabaseAuth.from("membership_coupons").select("*").order("created_at", { ascending: false }),
-    ]);
-    if (s.data) {
-      setSettings(s.data as MembershipSettings);
-      setPrice(String(s.data.membership_price));
-      setEnabled(s.data.membership_enabled);
-    }
-    setPurchases((p.data ?? []) as PurchaseWithEmail[]);
-    setVideos((v.data ?? []) as PremiumVideo[]);
-    setCoupons((c.data ?? []) as MembershipCoupon[]);
+    try {
+      const [sRes, mRes, vRes, eRes, cRes, aRes] = await Promise.all([
+        adminFetch("/api/admin/membership/settings"),
+        adminFetch("/api/admin/membership/members"),
+        adminFetch("/api/admin/membership/videos"),
+        adminFetch("/api/admin/membership/live-events"),
+        adminFetch("/api/admin/membership/coupons"),
+        adminFetch("/api/admin/membership/audit-log"),
+      ]);
+      if (sRes.ok) {
+        const d = await sRes.json();
+        setSett({ membership_price: String(d.membership_price ?? ""), membership_enabled: d.membership_enabled ?? true, whatsapp_number: d.whatsapp_number ?? "" });
+      }
+      if (mRes.ok) { const d = await mRes.json(); setMembers(d.members ?? []); }
+      if (vRes.ok) { const d = await vRes.json(); setVideos(d.videos ?? []); }
+      if (eRes.ok) { const d = await eRes.json(); setEvents(d.events ?? []); }
+      if (cRes.ok) { const d = await cRes.json(); setCoupons(d.coupons ?? []); }
+      if (aRes.ok) { const d = await aRes.json(); setAudit(d.entries ?? []); }
+    } catch (e) { toast(`Load error: ${e instanceof Error ? e.message : String(e)}`); }
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
-  const toast = (msg: string) => { setStatus(msg); setTimeout(() => setStatus(null), 3000); };
-
-  /* ── Settings ── */
+  /* ── Settings save ── */
   const saveSettings = async () => {
-    if (!settings) return;
-    const { error } = await supabaseAuth.from("membership_settings")
-      .update({ membership_price: Number(price), membership_enabled: enabled, updated_at: new Date().toISOString() })
-      .eq("id", settings.id);
-    toast(error ? `Error: ${error.message}` : "Settings saved.");
+    const res = await adminFetch("/api/admin/membership/settings", "POST", {
+      membership_price:   Number(sett.membership_price),
+      membership_enabled: sett.membership_enabled,
+      whatsapp_number:    sett.whatsapp_number,
+    });
+    const d = await res.json();
+    toast(res.ok ? "Settings saved." : `Error: ${d.error}`);
+    if (res.ok) void load();
   };
 
-  /* ── Purchases ── */
-  const approvePurchase = async (id: number, userId: string) => {
-    await supabaseAuth.from("membership_purchases")
-      .update({ status: "approved", approved_by: "admin", approved_at: new Date().toISOString() })
-      .eq("id", id);
-    await supabaseAuth.from("profiles").update({ premium: true }).eq("id", userId);
-    void load();
-    toast("Purchase approved.");
+  /* ── Member actions ── */
+  const extendMember = async (userId: string) => {
+    if (!confirm("Extend this member's access by 30 days?")) return;
+    const res = await adminFetch("/api/admin/membership/members/extend", "POST", { user_id: userId });
+    const d = await res.json();
+    toast(res.ok ? `Extended. New expiry: ${d.new_expiry_date ? new Date(d.new_expiry_date).toLocaleDateString() : "?"}` : `Error: ${d.error}`);
+    if (res.ok) void load();
   };
-  const rejectPurchase = async (id: number) => {
-    await supabaseAuth.from("membership_purchases")
-      .update({ status: "rejected", approved_by: "admin", approved_at: new Date().toISOString() })
-      .eq("id", id);
-    void load();
+  const disableMember = async (userId: string) => {
+    if (!confirm("Disable this member's access immediately?")) return;
+    const res = await adminFetch("/api/admin/membership/members/disable", "POST", { user_id: userId });
+    const d = await res.json();
+    toast(res.ok ? "Member disabled." : `Error: ${d.error}`);
+    if (res.ok) void load();
   };
 
-  /* ── Videos ── */
+  /* ── Video CRUD ── */
   const addVideo = async () => {
     if (!newVideo.title || !newVideo.video_url) { toast("Title and URL required."); return; }
-    const maxOrder = Math.max(0, ...videos.map((v) => v.sort_order));
-    const { error } = await supabaseAuth.from("premium_videos")
-      .insert([{ ...newVideo, sort_order: maxOrder + 1, is_active: true }]);
-    if (error) { toast(`Error: ${error.message}`); return; }
-    setNewVideo({ title: "", description: "", video_url: "", thumbnail_url: "", category: "General" });
-    toast("Video added."); void load();
+    const res = await adminFetch("/api/admin/membership/videos", "POST", newVideo);
+    const d = await res.json();
+    toast(res.ok ? "Video added." : `Error: ${d.error}`);
+    if (res.ok) { setNewVideo(DEFAULT_VIDEO); void load(); }
   };
   const deleteVideo = async (id: number) => {
-    await supabaseAuth.from("premium_videos").delete().eq("id", id); void load();
+    if (!confirm("Delete this video?")) return;
+    const res = await adminFetch(`/api/admin/membership/videos/${id}`, "DELETE");
+    const d = await res.json();
+    toast(res.ok ? "Video deleted." : `Error: ${d.error}`);
+    if (res.ok) void load();
   };
-  const toggleVideo = async (id: number, current: boolean) => {
-    await supabaseAuth.from("premium_videos").update({ is_active: !current }).eq("id", id); void load();
+  const toggleVideo = async (v: VideoRow) => {
+    const newStatus = v.status === "published" ? "draft" : "published";
+    const res = await adminFetch("/api/admin/membership/videos", "POST", { ...v, status: newStatus });
+    const d = await res.json();
+    toast(res.ok ? `Video ${newStatus}.` : `Error: ${d.error}`);
+    if (res.ok) void load();
   };
 
-  /* ── Coupons ── */
+  /* ── Live event CRUD ── */
+  const addEvent = async () => {
+    if (!newEvent.title || !newEvent.event_date || !newEvent.youtube_link) { toast("Title, date, and link required."); return; }
+    const res = await adminFetch("/api/admin/membership/live-events", "POST", newEvent);
+    const d = await res.json();
+    toast(res.ok ? "Event created." : `Error: ${d.error}`);
+    if (res.ok) { setNewEvent(DEFAULT_EVENT); void load(); }
+  };
+  const deleteEvent = async (id: number) => {
+    if (!confirm("Delete this event?")) return;
+    const res = await adminFetch(`/api/admin/membership/live-events/${id}`, "DELETE");
+    const d = await res.json();
+    toast(res.ok ? "Event deleted." : `Error: ${d.error}`);
+    if (res.ok) void load();
+  };
+
+  /* ── Coupon CRUD ── */
   const addCoupon = async () => {
-    if (!newCoupon.code || !newCoupon.discount_value) { toast("Code and discount value required."); return; }
-    const { error } = await supabaseAuth.from("membership_coupons").insert([{
-      code: newCoupon.code.trim().toUpperCase(),
-      discount_type: newCoupon.discount_type,
+    if (!newCoupon.code || !newCoupon.discount_value) { toast("Code and value required."); return; }
+    const res = await adminFetch("/api/admin/membership/coupons", "POST", {
+      code: newCoupon.code.trim().toUpperCase(), discount_type: newCoupon.discount_type,
       discount_value: Number(newCoupon.discount_value),
       max_uses: newCoupon.max_uses ? Number(newCoupon.max_uses) : null,
-      expires_at: newCoupon.expires_at || null,
-      is_active: newCoupon.is_active,
-    }]);
-    if (error) { toast(`Error: ${error.message}`); return; }
-    setNewCoupon({ code: "", discount_type: "percent", discount_value: "", max_uses: "", expires_at: "", is_active: true });
-    toast("Coupon created."); void load();
+      expires_at: newCoupon.expires_at || null, is_active: newCoupon.is_active,
+    });
+    const d = await res.json();
+    toast(res.ok ? "Coupon created." : `Error: ${d.error}`);
+    if (res.ok) { setNewCoupon(DEFAULT_COUPON); void load(); }
   };
-  const toggleCoupon = async (id: number, current: boolean) => {
-    await supabaseAuth.from("membership_coupons").update({ is_active: !current }).eq("id", id); void load();
+  const toggleCoupon = async (c: CouponRow) => {
+    const res = await adminFetch("/api/admin/membership/coupons", "POST", { ...c, is_active: !c.is_active });
+    toast(res.ok ? "Coupon updated." : "Update failed.");
+    if (res.ok) void load();
   };
   const deleteCoupon = async (id: number) => {
-    await supabaseAuth.from("membership_coupons").delete().eq("id", id); void load();
+    if (!confirm("Delete this coupon?")) return;
+    const res = await adminFetch(`/api/admin/membership/coupons/${id}`, "DELETE");
+    toast(res.ok ? "Coupon deleted." : "Delete failed.");
+    if (res.ok) void load();
   };
 
-  const inputClass = "mt-1.5 w-full rounded-2xl border border-sage/15 bg-white px-4 py-2.5 text-sm text-sage outline-none focus:border-sage/40";
-
-  const tabs: { id: Tab; label: string; badge?: number }[] = [
-    { id: "settings",  label: "Settings" },
-    { id: "purchases", label: "Purchases", badge: purchases.filter(p => p.status === "pending").length || undefined },
-    { id: "videos",    label: "Videos",    badge: videos.length || undefined },
-    { id: "coupons",   label: "Coupons",   badge: coupons.length || undefined },
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { id:"settings",    label:"Settings",    icon:<Settings className="h-4 w-4" /> },
+    { id:"members",     label:"Members",     icon:<Users className="h-4 w-4" />,     badge: members.filter(m=>m.membership_status==="active").length || undefined },
+    { id:"videos",      label:"Videos",      icon:<Video className="h-4 w-4" />,     badge: videos.length || undefined },
+    { id:"live-events", label:"Live Events", icon:<Radio className="h-4 w-4" />,     badge: events.filter(e=>e.is_active).length || undefined },
+    { id:"coupons",     label:"Coupons",     icon:<Tag className="h-4 w-4" />,       badge: coupons.filter(c=>c.is_active).length || undefined },
+    { id:"audit",       label:"Audit Log",   icon:<FileText className="h-4 w-4" /> },
   ];
 
   return (
     <div className="min-h-screen bg-ivory font-body text-sage">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="font-display text-3xl text-sage">Membership Admin</h1>
-            <p className="mt-1 text-sm text-sage/60">Manage pricing, purchases, videos, and coupon codes.</p>
+            <p className="mt-1 text-sm text-sage/60">Manage pricing, members, videos, live events, and coupons.</p>
           </div>
           <button onClick={() => void load()}
             className="inline-flex items-center gap-2 rounded-full border border-sage/15 px-4 py-2 text-sm text-sage hover:bg-ivory/80">
@@ -155,42 +251,53 @@ export default function MembershipAdminPage() {
           </button>
         </div>
 
-        {status && (
-          <div className="mb-6 rounded-2xl border border-gold/25 bg-gold/10 px-5 py-3 text-sm font-medium text-sage">{status}</div>
+        {toastMsg && (
+          <div className="mb-5 flex items-start gap-2 rounded-2xl border border-gold/25 bg-gold/10 px-5 py-3 text-sm font-medium text-sage">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-gold" /> {toastMsg}
+          </div>
         )}
 
-        {/* Tabs */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition ${
-                activeTab === tab.id ? "bg-sage text-ivory" : "border border-sage/20 bg-white text-sage hover:bg-ivory"
+        {/* Tab bar — horizontally scrollable on mobile */}
+        <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
+          {tabs.map((t) => (
+            <button key={t.id} type="button" onClick={() => setTab(t.id)}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                tab === t.id ? "bg-sage text-ivory" : "border border-sage/20 bg-white text-sage hover:bg-ivory"
               }`}>
-              {tab.label}
-              {tab.badge ? (
-                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                  activeTab === tab.id ? "bg-white/20 text-ivory" : "bg-gold/20 text-gold"
-                }`}>{tab.badge}</span>
-              ) : null}
+              {t.icon} {t.label}
+              {t.badge ? <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${tab===t.id?"bg-white/20 text-ivory":"bg-gold/20 text-gold"}`}>{t.badge}</span> : null}
             </button>
           ))}
         </div>
 
-        {loading ? <p className="text-sm text-sage/60">Loading…</p> : (
+        {loading ? (
+          <div className="flex items-center gap-3 text-sm text-sage/60">
+            <RefreshCcw className="h-4 w-4 animate-spin" /> Loading…
+          </div>
+        ) : (
           <>
-            {/* ── SETTINGS TAB ── */}
-            {activeTab === "settings" && (
+            {/* ══ SETTINGS ══ */}
+            {tab === "settings" && (
               <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
                 <h2 className="font-display text-xl text-sage mb-5">Membership Settings</h2>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <label className="text-sm font-medium text-sage">Membership Price (Rs.)</label>
-                    <input type="number" value={price} onChange={(e) => setPrice(e.target.value)}
-                      className={inputClass} placeholder="999" />
+                    <input type="number" value={sett.membership_price}
+                      onChange={(e) => setSett({...sett, membership_price: e.target.value})}
+                      className={IC} placeholder="999" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-sage">WhatsApp Number (E.164)</label>
+                    <input type="text" value={sett.whatsapp_number}
+                      onChange={(e) => setSett({...sett, whatsapp_number: e.target.value})}
+                      className={IC} placeholder="919876543210" />
                   </div>
                   <div className="flex flex-col justify-end">
                     <label className="flex cursor-pointer items-center gap-3 text-sm font-medium text-sage">
-                      <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="h-4 w-4 rounded" />
+                      <input type="checkbox" checked={sett.membership_enabled}
+                        onChange={(e) => setSett({...sett, membership_enabled: e.target.checked})}
+                        className="h-4 w-4 rounded" />
                       Membership sales enabled
                     </label>
                   </div>
@@ -202,50 +309,39 @@ export default function MembershipAdminPage() {
               </div>
             )}
 
-            {/* ── PURCHASES TAB ── */}
-            {activeTab === "purchases" && (
+            {/* ══ MEMBERS ══ */}
+            {tab === "members" && (
               <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
-                <h2 className="font-display text-xl text-sage mb-5">
-                  Purchases
-                  {purchases.filter(p => p.status === "pending").length > 0 && (
-                    <span className="ml-2 rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-normal text-amber-700">
-                      {purchases.filter(p => p.status === "pending").length} pending
-                    </span>
-                  )}
-                </h2>
-                {purchases.length === 0 ? <p className="text-sm text-sage/50">No purchases yet.</p> : (
+                <h2 className="font-display text-xl text-sage mb-5">Members ({members.length})</h2>
+                {members.length === 0 ? <p className="text-sm text-sage/50">No members yet.</p> : (
                   <div className="flex flex-col gap-3">
-                    {purchases.map((p) => (
-                      <div key={p.id}
-                        className="flex flex-col gap-3 rounded-[1.5rem] border border-sage/10 bg-ivory/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-semibold text-sage text-sm">
-                            {(p as PurchaseWithEmail).profiles?.full_name || "Unknown"} — {(p as PurchaseWithEmail).profiles?.email || p.user_id}
-                          </p>
-                          <p className="text-xs text-sage/60 mt-0.5">
-                            Rs. {p.amount_paid} · {p.payment_id} · {new Date(p.created_at).toLocaleDateString()}
-                          </p>
-                          {p.payment_proof && (
-                            <a href={p.payment_proof} target="_blank" rel="noreferrer" className="text-xs text-gold underline">View proof</a>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            p.status === "approved" ? "bg-emerald-100 text-emerald-700" :
-                            p.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                          }`}>{p.status}</span>
-                          {p.status === "pending" && (
-                            <>
-                              <button onClick={() => void approvePurchase(p.id, p.user_id!)}
-                                className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                    {members.map((m) => (
+                      <div key={m.id} className="rounded-[1.5rem] border border-sage/10 bg-ivory/60 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sage text-sm truncate">{m.full_name || m.email || m.id}</p>
+                            <p className="text-xs text-sage/60 mt-0.5">{m.email}</p>
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                m.membership_status==="active"?"bg-emerald-100 text-emerald-700":
+                                m.membership_status==="expired"?"bg-red-100 text-red-700":"bg-sage/10 text-sage/50"
+                              }`}>{m.membership_status}</span>
+                              {m.expiry_date && <span className="text-xs text-sage/50">Expires: {new Date(m.expiry_date).toLocaleDateString()}</span>}
+                              {m.latest_purchase?.amount_paid && <span className="text-xs text-sage/50">Rs. {m.latest_purchase.amount_paid}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => void extendMember(m.id)}
+                              className="rounded-full border border-sage/20 bg-white px-3 py-1.5 text-xs font-semibold text-sage hover:bg-ivory transition">
+                              +30 Days
+                            </button>
+                            {m.membership_status === "active" && (
+                              <button onClick={() => void disableMember(m.id)}
+                                className="rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition">
+                                Disable
                               </button>
-                              <button onClick={() => void rejectPurchase(p.id)}
-                                className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
-                                <XCircle className="h-3.5 w-3.5" /> Reject
-                              </button>
-                            </>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -254,54 +350,48 @@ export default function MembershipAdminPage() {
               </div>
             )}
 
-            {/* ── VIDEOS TAB ── */}
-            {activeTab === "videos" && (
+            {/* ══ VIDEOS ══ */}
+            {tab === "videos" && (
               <div className="space-y-6">
-                {/* Add video */}
                 <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
-                  <h2 className="font-display text-xl text-sage mb-5">Add Premium Video</h2>
+                  <h2 className="font-display text-xl text-sage mb-5">Add Video</h2>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div><label className="text-sm font-medium text-sage">Title *</label>
-                      <input value={newVideo.title} onChange={(e) => setNewVideo({ ...newVideo, title: e.target.value })}
-                        placeholder="e.g. Career Astrology Deep Dive" className={inputClass} /></div>
+                      <input value={newVideo.title} onChange={(e)=>setNewVideo({...newVideo,title:e.target.value})} className={IC} placeholder="Video title" /></div>
                     <div><label className="text-sm font-medium text-sage">Category</label>
-                      <input value={newVideo.category} onChange={(e) => setNewVideo({ ...newVideo, category: e.target.value })}
-                        placeholder="Career, Wealth, Relationship…" className={inputClass} /></div>
-                    <div className="sm:col-span-2"><label className="text-sm font-medium text-sage">Video URL *</label>
-                      <input value={newVideo.video_url} onChange={(e) => setNewVideo({ ...newVideo, video_url: e.target.value })}
-                        placeholder="https://www.youtube.com/watch?v=..." className={inputClass} /></div>
-                    <div><label className="text-sm font-medium text-sage">Thumbnail URL (optional)</label>
-                      <input value={newVideo.thumbnail_url} onChange={(e) => setNewVideo({ ...newVideo, thumbnail_url: e.target.value })}
-                        placeholder="https://…/thumb.jpg" className={inputClass} /></div>
+                      <input value={newVideo.category} onChange={(e)=>setNewVideo({...newVideo,category:e.target.value})} className={IC} placeholder="Career, Wealth…" /></div>
+                    <div className="sm:col-span-2"><label className="text-sm font-medium text-sage">YouTube URL *</label>
+                      <input value={newVideo.video_url} onChange={(e)=>setNewVideo({...newVideo,video_url:e.target.value})} className={IC} placeholder="https://youtube.com/watch?v=…" /></div>
+                    <div><label className="text-sm font-medium text-sage">Thumbnail URL</label>
+                      <input value={newVideo.thumbnail_url} onChange={(e)=>setNewVideo({...newVideo,thumbnail_url:e.target.value})} className={IC} /></div>
                     <div><label className="text-sm font-medium text-sage">Description</label>
-                      <input value={newVideo.description} onChange={(e) => setNewVideo({ ...newVideo, description: e.target.value })}
-                        placeholder="Short description…" className={inputClass} /></div>
+                      <input value={newVideo.description} onChange={(e)=>setNewVideo({...newVideo,description:e.target.value})} className={IC} /></div>
+                    <div><label className="text-sm font-medium text-sage">Status</label>
+                      <select value={newVideo.status} onChange={(e)=>setNewVideo({...newVideo,status:e.target.value as "published"|"draft"})} className={IC}>
+                        <option value="published">Published</option>
+                        <option value="draft">Draft</option>
+                      </select></div>
                   </div>
-                  <button onClick={addVideo}
-                    className="mt-5 inline-flex items-center gap-2 rounded-full bg-sage px-6 py-2.5 text-sm font-semibold text-ivory hover:bg-sage/85">
+                  <button onClick={addVideo} className="mt-5 inline-flex items-center gap-2 rounded-full bg-sage px-6 py-2.5 text-sm font-semibold text-ivory hover:bg-sage/85">
                     <Plus className="h-4 w-4" /> Add Video
                   </button>
                 </div>
-                {/* Video list */}
                 <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
                   <h2 className="font-display text-xl text-sage mb-5">Videos ({videos.length})</h2>
                   {videos.length === 0 ? <p className="text-sm text-sage/50">No videos yet.</p> : (
                     <div className="flex flex-col gap-3">
                       {videos.map((v) => (
-                        <div key={v.id} className={`flex flex-col gap-3 rounded-[1.5rem] border p-4 sm:flex-row sm:items-center sm:justify-between ${
-                          v.is_active ? "border-sage/10 bg-ivory/60" : "border-sage/5 bg-sage/3 opacity-60"
-                        }`}>
+                        <div key={v.id} className={`flex flex-col gap-3 rounded-[1.5rem] border p-4 sm:flex-row sm:items-center sm:justify-between ${v.status==="published"?"border-sage/10 bg-ivory/60":"border-sage/5 opacity-60"}`}>
                           <div className="min-w-0 flex-1">
                             <p className="font-semibold text-sage text-sm truncate">{v.title}</p>
-                            <p className="text-xs text-sage/50 mt-0.5">{v.category} · <a href={v.video_url} target="_blank" rel="noreferrer" className="underline">open link</a></p>
+                            <p className="text-xs text-sage/50 mt-0.5">{v.category} · <a href={v.video_url} target="_blank" rel="noreferrer" className="underline">link</a></p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={() => void toggleVideo(v.id, v.is_active)}
-                              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                                v.is_active ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-sage/10 text-sage/60 hover:bg-sage/20"
-                              }`}>{v.is_active ? "Active" : "Hidden"}</button>
-                            <button onClick={() => void deleteVideo(v.id)}
-                              className="rounded-full border border-red-200 bg-white p-1.5 text-red-500 hover:bg-red-50">
+                            <button onClick={()=>void toggleVideo(v)}
+                              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${v.status==="published"?"bg-emerald-100 text-emerald-700":"bg-sage/10 text-sage/60"}`}>
+                              {v.status==="published"?"Published":"Draft"}
+                            </button>
+                            <button onClick={()=>void deleteVideo(v.id)} className="rounded-full border border-red-200 bg-white p-1.5 text-red-500 hover:bg-red-50">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -313,89 +403,110 @@ export default function MembershipAdminPage() {
               </div>
             )}
 
-            {/* ── COUPONS TAB ── */}
-            {activeTab === "coupons" && (
+            {/* ══ LIVE EVENTS ══ */}
+            {tab === "live-events" && (
               <div className="space-y-6">
-                {/* Add coupon */}
+                <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
+                  <h2 className="font-display text-xl text-sage mb-5">Add Live Event</h2>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div><label className="text-sm font-medium text-sage">Title *</label>
+                      <input value={newEvent.title} onChange={(e)=>setNewEvent({...newEvent,title:e.target.value})} className={IC} placeholder="Event title" /></div>
+                    <div><label className="text-sm font-medium text-sage">Date &amp; Time *</label>
+                      <input type="datetime-local" value={newEvent.event_date} onChange={(e)=>setNewEvent({...newEvent,event_date:e.target.value})} className={IC} /></div>
+                    <div className="sm:col-span-2"><label className="text-sm font-medium text-sage">YouTube Live URL *</label>
+                      <input value={newEvent.youtube_link} onChange={(e)=>setNewEvent({...newEvent,youtube_link:e.target.value})} className={IC} placeholder="https://youtube.com/live/…" /></div>
+                    <div><label className="text-sm font-medium text-sage">Thumbnail URL</label>
+                      <input value={newEvent.thumbnail_url} onChange={(e)=>setNewEvent({...newEvent,thumbnail_url:e.target.value})} className={IC} /></div>
+                    <div><label className="text-sm font-medium text-sage">Description</label>
+                      <input value={newEvent.description} onChange={(e)=>setNewEvent({...newEvent,description:e.target.value})} className={IC} /></div>
+                  </div>
+                  <button onClick={addEvent} className="mt-5 inline-flex items-center gap-2 rounded-full bg-sage px-6 py-2.5 text-sm font-semibold text-ivory hover:bg-sage/85">
+                    <Plus className="h-4 w-4" /> Create Event
+                  </button>
+                </div>
+                <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
+                  <h2 className="font-display text-xl text-sage mb-5">Live Events ({events.length})</h2>
+                  {events.length === 0 ? <p className="text-sm text-sage/50">No events yet.</p> : (
+                    <div className="flex flex-col gap-3">
+                      {events.map((ev) => (
+                        <div key={ev.id} className={`flex flex-col gap-3 rounded-[1.5rem] border p-4 sm:flex-row sm:items-center sm:justify-between ${ev.is_active?"border-sage/10 bg-ivory/60":"border-sage/5 opacity-60"}`}>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sage text-sm truncate">{ev.title}</p>
+                            <p className="text-xs text-sage/50 mt-0.5">{new Date(ev.event_date).toLocaleString()}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ev.is_active?"bg-emerald-100 text-emerald-700":"bg-sage/10 text-sage/50"}`}>
+                              {ev.is_active?"Active":"Hidden"}
+                            </span>
+                            <button onClick={()=>void deleteEvent(ev.id)} className="rounded-full border border-red-200 bg-white p-1.5 text-red-500 hover:bg-red-50">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ══ COUPONS ══ */}
+            {tab === "coupons" && (
+              <div className="space-y-6">
                 <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
                   <h2 className="font-display text-xl text-sage mb-5 flex items-center gap-2">
                     <Tag className="h-5 w-5 text-gold" /> Create Coupon
                   </h2>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div><label className="text-sm font-medium text-sage">Code *</label>
-                      <input value={newCoupon.code}
-                        onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value.toUpperCase().replace(/\s/g,"") })}
-                        placeholder="SAVE20" className={inputClass} /></div>
-                    <div>
-                      <label className="text-sm font-medium text-sage">Discount Type</label>
-                      <select value={newCoupon.discount_type}
-                        onChange={(e) => setNewCoupon({ ...newCoupon, discount_type: e.target.value as "percent" | "fixed" })}
-                        className={inputClass}>
+                      <input value={newCoupon.code} onChange={(e)=>setNewCoupon({...newCoupon,code:e.target.value.toUpperCase().replace(/\s/g,"")})} className={IC} placeholder="SAVE20" /></div>
+                    <div><label className="text-sm font-medium text-sage">Type</label>
+                      <select value={newCoupon.discount_type} onChange={(e)=>setNewCoupon({...newCoupon,discount_type:e.target.value as "percent"|"fixed"})} className={IC}>
                         <option value="percent">Percentage (%)</option>
-                        <option value="fixed">Fixed Amount (Rs.)</option>
-                      </select>
-                    </div>
-                    <div><label className="text-sm font-medium text-sage">
-                        Discount Value * {newCoupon.discount_type === "percent" ? "(%)" : "(Rs.)"}
-                      </label>
-                      <input type="number" value={newCoupon.discount_value}
-                        onChange={(e) => setNewCoupon({ ...newCoupon, discount_value: e.target.value })}
-                        placeholder={newCoupon.discount_type === "percent" ? "20" : "100"}
-                        className={inputClass} /></div>
-                    <div><label className="text-sm font-medium text-sage">Max Uses (blank = unlimited)</label>
-                      <input type="number" value={newCoupon.max_uses}
-                        onChange={(e) => setNewCoupon({ ...newCoupon, max_uses: e.target.value })}
-                        placeholder="100" className={inputClass} /></div>
-                    <div><label className="text-sm font-medium text-sage">Expires At (blank = never)</label>
-                      <input type="datetime-local" value={newCoupon.expires_at}
-                        onChange={(e) => setNewCoupon({ ...newCoupon, expires_at: e.target.value })}
-                        className={inputClass} /></div>
+                        <option value="fixed">Fixed (Rs.)</option>
+                      </select></div>
+                    <div><label className="text-sm font-medium text-sage">Value * {newCoupon.discount_type==="percent"?"(%)":"(Rs.)"}</label>
+                      <input type="number" value={newCoupon.discount_value} onChange={(e)=>setNewCoupon({...newCoupon,discount_value:e.target.value})} className={IC} placeholder="20" /></div>
+                    <div><label className="text-sm font-medium text-sage">Max Uses (blank=unlimited)</label>
+                      <input type="number" value={newCoupon.max_uses} onChange={(e)=>setNewCoupon({...newCoupon,max_uses:e.target.value})} className={IC} placeholder="100" /></div>
+                    <div><label className="text-sm font-medium text-sage">Expires At (blank=never)</label>
+                      <input type="datetime-local" value={newCoupon.expires_at} onChange={(e)=>setNewCoupon({...newCoupon,expires_at:e.target.value})} className={IC} /></div>
                     <div className="flex flex-col justify-end">
                       <label className="flex cursor-pointer items-center gap-3 text-sm font-medium text-sage">
-                        <input type="checkbox" checked={newCoupon.is_active}
-                          onChange={(e) => setNewCoupon({ ...newCoupon, is_active: e.target.checked })}
-                          className="h-4 w-4 rounded" />
+                        <input type="checkbox" checked={newCoupon.is_active} onChange={(e)=>setNewCoupon({...newCoupon,is_active:e.target.checked})} className="h-4 w-4 rounded" />
                         Active immediately
                       </label>
                     </div>
                   </div>
-                  <button onClick={addCoupon}
-                    className="mt-5 inline-flex items-center gap-2 rounded-full bg-sage px-6 py-2.5 text-sm font-semibold text-ivory hover:bg-sage/85">
+                  <button onClick={addCoupon} className="mt-5 inline-flex items-center gap-2 rounded-full bg-sage px-6 py-2.5 text-sm font-semibold text-ivory hover:bg-sage/85">
                     <Plus className="h-4 w-4" /> Create Coupon
                   </button>
                 </div>
-
-                {/* Coupon list */}
                 <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
                   <h2 className="font-display text-xl text-sage mb-5">Coupons ({coupons.length})</h2>
-                  {coupons.length === 0 ? <p className="text-sm text-sage/50">No coupons created yet.</p> : (
+                  {coupons.length === 0 ? <p className="text-sm text-sage/50">No coupons yet.</p> : (
                     <div className="flex flex-col gap-3">
                       {coupons.map((c) => (
-                        <div key={c.id} className={`rounded-[1.5rem] border p-4 transition ${
-                          c.is_active ? "border-sage/10 bg-ivory/60" : "border-sage/5 opacity-60"
-                        }`}>
+                        <div key={c.id} className={`rounded-[1.5rem] border p-4 ${c.is_active?"border-sage/10 bg-ivory/60":"border-sage/5 opacity-60"}`}>
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-mono font-bold text-sage">{c.code}</span>
-                                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                  c.is_active ? "bg-emerald-100 text-emerald-700" : "bg-sage/10 text-sage/50"
-                                }`}>{c.is_active ? "Active" : "Disabled"}</span>
+                                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${c.is_active?"bg-emerald-100 text-emerald-700":"bg-sage/10 text-sage/50"}`}>
+                                  {c.is_active?"Active":"Disabled"}
+                                </span>
                               </div>
                               <p className="text-xs text-sage/60 mt-1">
-                                {c.discount_type === "percent" ? `${c.discount_value}% off` : `Rs. ${c.discount_value} off`}
-                                {" · "}
-                                {c.used_count} used{c.max_uses ? ` / ${c.max_uses} max` : ""}
-                                {c.expires_at ? ` · expires ${new Date(c.expires_at).toLocaleDateString()}` : " · no expiry"}
+                                {c.discount_type==="percent"?`${c.discount_value}% off`:`Rs. ${c.discount_value} off`}
+                                {" · "}{c.used_count} used{c.max_uses?` / ${c.max_uses} max`:""}
+                                {c.expires_at?` · expires ${new Date(c.expires_at).toLocaleDateString()}`:" · no expiry"}
                               </p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <button onClick={() => void toggleCoupon(c.id, c.is_active)}
-                                className="rounded-full border border-sage/20 bg-white px-3 py-1.5 text-xs font-semibold text-sage hover:bg-ivory transition">
-                                {c.is_active ? "Disable" : "Enable"}
+                              <button onClick={()=>void toggleCoupon(c)} className="rounded-full border border-sage/20 bg-white px-3 py-1.5 text-xs font-semibold text-sage hover:bg-ivory transition">
+                                {c.is_active?"Disable":"Enable"}
                               </button>
-                              <button onClick={() => void deleteCoupon(c.id)}
-                                className="rounded-full border border-red-200 bg-white p-1.5 text-red-500 hover:bg-red-50">
+                              <button onClick={()=>void deleteCoupon(c.id)} className="rounded-full border border-red-200 bg-white p-1.5 text-red-500 hover:bg-red-50">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
@@ -405,6 +516,28 @@ export default function MembershipAdminPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* ══ AUDIT LOG ══ */}
+            {tab === "audit" && (
+              <div className="rounded-[2rem] border border-sage/10 bg-white/80 p-6 shadow-glow">
+                <h2 className="font-display text-xl text-sage mb-5">Audit Log (last 50)</h2>
+                {audit.length === 0 ? <p className="text-sm text-sage/50">No audit entries yet.</p> : (
+                  <div className="flex flex-col gap-2 overflow-x-auto">
+                    <div className="grid grid-cols-4 gap-2 rounded-xl bg-sage/8 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-sage/60">
+                      <span>Action</span><span>By</span><span>User</span><span>Time</span>
+                    </div>
+                    {audit.map((entry) => (
+                      <div key={entry.id} className="grid grid-cols-4 gap-2 rounded-xl border border-sage/8 bg-ivory/50 px-4 py-2.5 text-xs text-sage/80">
+                        <span className="font-semibold truncate">{entry.action}</span>
+                        <span className="truncate">{entry.performed_by}</span>
+                        <span className="truncate text-sage/50">{entry.target_user_id ? entry.target_user_id.slice(0,8)+"…" : "—"}</span>
+                        <span className="text-sage/50">{new Date(entry.created_at).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
