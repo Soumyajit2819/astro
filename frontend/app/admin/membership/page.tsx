@@ -4,16 +4,16 @@
  * /admin/membership
  * ──────────────────
  * Membership admin panel — integrated into the existing /admin shell.
- * Authentication: astro_admin_session cookie (verified by middleware) +
- *                 Supabase JWT with profiles.is_admin=true (verified per API call).
- * All writes go through /api/admin/membership/* routes (Dual_Auth).
- * No direct Supabase client writes. No PIN gate. No sessionStorage.
+ * Authentication layer 1: astro_admin_session cookie (middleware).
+ * Authentication layer 2: Google sign-in via Supabase → JWT sent with every API call.
+ *                          The signed-in user must have profiles.is_admin = true.
+ * Admin never needs to visit /membership — they sign in directly here.
  */
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  CheckCircle2, Plus, RefreshCcw, Save, Tag, Trash2, XCircle,
-  Users, Video, Radio, Settings, FileText, AlertCircle
+  Plus, RefreshCcw, Save, Tag, Trash2,
+  Users, Video, Radio, Settings, FileText, AlertCircle, LogOut
 } from "lucide-react";
 import { supabaseAuth } from "@/lib/supabase-auth";
 
@@ -76,11 +76,116 @@ const DEFAULT_COUPON = { code:"", discount_type:"percent" as "percent"|"fixed", 
 const IC = "mt-1.5 w-full rounded-2xl border border-sage/15 bg-white px-4 py-2.5 text-sm text-sage outline-none focus:border-sage/40";
 
 /* ══════════════════════════════════════════════════════════
+   GOOGLE SIGN-IN GATE
+   Admin signs in here independently — no member login needed.
+   ══════════════════════════════════════════════════════════ */
+function AdminSignInGate({ onSignedIn }: { onSignedIn: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true); setError(null);
+    try {
+      const { error: signInError } = await supabaseAuth.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/admin/membership`,
+          queryParams: { access_type: "offline", prompt: "select_account" },
+        },
+      });
+      if (signInError) throw signInError;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sign-in failed.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-ivory px-4">
+      <div className="w-full max-w-sm rounded-[2rem] border border-sage/10 bg-white/90 p-8 shadow-glow text-center">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-sage/10">
+          <Settings className="h-7 w-7 text-sage" />
+        </div>
+        <h1 className="font-display text-2xl text-sage">Membership Admin</h1>
+        <p className="mt-2 text-sm text-sage/60">Sign in with your admin Google account to continue.</p>
+        {error && <p className="mt-3 text-xs text-ember">{error}</p>}
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+          className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full border border-sage/20 bg-white px-6 py-3 text-sm font-semibold text-sage shadow transition hover:bg-ivory disabled:opacity-60"
+        >
+          {loading ? (
+            <RefreshCcw className="h-4 w-4 animate-spin" />
+          ) : (
+            <svg viewBox="0 0 24 24" className="h-5 w-5">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+          )}
+          {loading ? "Signing in…" : "Sign in with Google"}
+        </button>
+        <p className="mt-4 text-xs text-sage/40">Only authorised admin accounts can access this panel.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
    MAIN PAGE COMPONENT
-   Protected by middleware (astro_admin_session cookie).
-   No PIN gate — the cookie + middleware handle page-level auth.
+   Protected by middleware (astro_admin_session cookie) +
+   Google sign-in with profiles.is_admin = true.
    ══════════════════════════════════════════════════════════ */
 export default function MembershipAdminPage() {
+  const [authState, setAuthState] = useState<"loading" | "unauthenticated" | "authenticated">("loading");
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+
+  // Check Supabase session on mount + listen for auth changes (e.g. after OAuth redirect)
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabaseAuth.auth.getSession();
+      if (session?.user) {
+        setAdminEmail(session.user.email ?? null);
+        setAuthState("authenticated");
+      } else {
+        setAuthState("unauthenticated");
+      }
+    };
+    void checkSession();
+
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setAdminEmail(session.user.email ?? null);
+        setAuthState("authenticated");
+      } else {
+        setAdminEmail(null);
+        setAuthState("unauthenticated");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabaseAuth.auth.signOut();
+    setAuthState("unauthenticated");
+  };
+
+  // Show loading spinner
+  if (authState === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-ivory">
+        <RefreshCcw className="h-8 w-8 animate-spin text-sage/40" />
+      </div>
+    );
+  }
+
+  // Show sign-in gate if not authenticated
+  if (authState === "unauthenticated") {
+    return <AdminSignInGate onSignedIn={() => setAuthState("authenticated")} />;
+  }
+
   const [tab, setTab]         = useState<Tab>("settings");
   const [toastMsg, setToast]  = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -245,10 +350,19 @@ export default function MembershipAdminPage() {
             <h1 className="font-display text-3xl text-sage">Membership Admin</h1>
             <p className="mt-1 text-sm text-sage/60">Manage pricing, members, videos, live events, and coupons.</p>
           </div>
-          <button onClick={() => void load()}
-            className="inline-flex items-center gap-2 rounded-full border border-sage/15 px-4 py-2 text-sm text-sage hover:bg-ivory/80">
-            <RefreshCcw className="h-4 w-4" /> Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            {adminEmail && (
+              <span className="hidden text-xs text-sage/50 sm:block">{adminEmail}</span>
+            )}
+            <button onClick={() => void load()}
+              className="inline-flex items-center gap-2 rounded-full border border-sage/15 px-4 py-2 text-sm text-sage hover:bg-ivory/80">
+              <RefreshCcw className="h-4 w-4" /> Refresh
+            </button>
+            <button onClick={handleSignOut}
+              className="inline-flex items-center gap-2 rounded-full border border-sage/15 px-4 py-2 text-sm text-sage/70 hover:text-sage">
+              <LogOut className="h-4 w-4" /> Sign out
+            </button>
+          </div>
         </div>
 
         {toastMsg && (
