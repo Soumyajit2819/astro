@@ -169,7 +169,7 @@ export function BookingForm({ config, initialServiceId }: {
 
   const buildWhatsAppLines = (values: BookingFormValues, service: ServiceItem, paymentId: string) => {
     const lines = [
-      `🙏 *New Booking — AstroVerse*`, ``,
+      `🙏 *New Booking — AstroGenZ*`, ``,
       `✅ Payment confirmed via Razorpay`, ``,
       `*Service:* ${service.name}`,
       `*Amount Paid:* Rs. ${finalPrice}${totalSavings > 0 ? ` _(saved Rs. ${totalSavings})_` : ""}`,
@@ -209,7 +209,7 @@ export function BookingForm({ config, initialServiceId }: {
       await new Promise<void>((resolve, reject) => {
         const rzp = new window.Razorpay({
           key: keyId, amount: order.amount, currency: order.currency,
-          name: "AstroVerse", description: service.name, order_id: order.id,
+          name: "AstroGenZ", description: service.name, order_id: order.id,
           prefill: { name: values.fullName, email: values.email, contact: values.phoneNumber },
           theme: { color: "#52624f" },
           handler: async (response) => {

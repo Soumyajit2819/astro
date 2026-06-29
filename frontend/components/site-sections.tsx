@@ -16,7 +16,6 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { BookingForm } from "./booking-form";
 import { AnnouncementBanner } from "./announcement-banner";
 import { Chatbot } from "./chatbot";
-import { MembershipBanner } from "./membership-banner";
 import { FeedbackForm } from "./feedback-form";
 import { Footer } from "./footer";
 import { Navbar } from "./navbar";
@@ -90,8 +89,6 @@ export function SiteSections() {
       {classService && <AnnouncementBanner classServiceId={classService.id} />}
       <main>
         <HeroSection />
-        {/* ── Membership banner — below hero, above demo class ── */}
-        <MembershipBanner />
         <DemoClassSection />
         <ContactSection />
         <FeedbackSection />
@@ -262,7 +259,7 @@ export function SiteSections() {
               <iframe
                 className="absolute inset-0 h-full w-full"
                 src={`https://www.youtube.com/embed/${DEMO_VIDEO_ID}?rel=0&modestbranding=1`}
-                title="AstroVerse Demo Class"
+                title="AstroGenZ Demo Class"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
@@ -345,7 +342,7 @@ export function SiteSections() {
                 Chat with {mainAstrologer.name} directly on WhatsApp to ask about the class schedule, duration, or content.
               </p>
               <a
-                href={`https://wa.me/${mainAstrologer.whatsapp}?text=${encodeURIComponent("Hi! I watched the demo class on AstroVerse and I'm interested in enrolling. Can you share more details?")}`}
+                href={`https://wa.me/${mainAstrologer.whatsapp}?text=${encodeURIComponent("Hi! I watched the demo class on AstroGenZ and I'm interested in enrolling. Can you share more details?")}`}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1ebe5d]"

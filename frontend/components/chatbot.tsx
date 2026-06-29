@@ -37,7 +37,7 @@ function getBotReply(raw: string, config: SiteConfig): Omit<Message, "id" | "rol
   /* greetings */
   if (match(input, ["hi", "hello", "namaste", "hey", "namaskar", "good morning", "good evening"])) {
     return {
-      text: `Namaste! 🙏 Welcome to AstroVerse.\n\nI'm Verse AI — your spiritual guide assistant. Ask me about our services, astrologer, booking, or anything else.`,
+      text: `Namaste! 🙏 Welcome to AstroGenZ.\n\nI'm Verse AI — your spiritual guide assistant. Ask me about our services, astrologer, booking, or anything else.`,
       chips: ["All services", "About astrologer", "How to book", "FAQs"],
     };
   }
@@ -238,7 +238,7 @@ function getBotReply(raw: string, config: SiteConfig): Omit<Message, "id" | "rol
 function makeWelcome(config: SiteConfig): Message {
   return {
     id: uid(), role: "bot",
-    text: `Namaste! 🙏 I'm *Verse AI* — the AstroVerse assistant.\n\nAsk me about services, the astrologer, booking, or anything else.`,
+    text: `Namaste! 🙏 I'm *Verse AI* — the AstroGenZ assistant.\n\nAsk me about services, the astrologer, booking, or anything else.`,
     chips: ["All services", "About astrologer", "How to book", "FAQs", "Social media", "Demo class", "Free prediction"],
   };
 }
@@ -400,7 +400,7 @@ export function Chatbot({ config }: { config: SiteConfig }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-[#f7f1e3]">Verse AI</p>
-              <p className="text-[10px] text-[#c89b3c]">AstroVerse Assistant · Always here ✨</p>
+              <p className="text-[10px] text-[#c89b3c]">AstroGenZ Assistant · Always here ✨</p>
             </div>
             <button type="button" aria-label="Close chat" onClick={() => setOpen(false)}
               className="rounded-full p-1.5 text-[#f7f1e3]/60 transition hover:bg-white/10 hover:text-[#f7f1e3]">
@@ -494,7 +494,7 @@ export function Chatbot({ config }: { config: SiteConfig }) {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask anything about AstroVerse…"
+                placeholder="Ask anything about AstroGenZ…"
                 className="flex-1 rounded-full border px-4 py-2 text-sm outline-none"
                 style={{
                   borderColor: "rgba(82,98,79,0.20)",
@@ -509,7 +509,7 @@ export function Chatbot({ config }: { config: SiteConfig }) {
               </button>
             </form>
             <p className="mt-1.5 text-center text-[10px]" style={{ color: "#8a9e85" }}>
-              Powered by Verse AI · AstroVerse
+              Powered by Verse AI · AstroGenZ
             </p>
           </div>
         </div>

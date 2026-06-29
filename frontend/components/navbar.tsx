@@ -8,13 +8,12 @@ const links = [
   ["About", "#about"],
   ["Demo Class", "#demo-class"],
   ["Services & Consultation", "#contact"],
-  ["Membership", "/membership"],
   ["Feedback", "#feedback"],
   ["FAQ", "#faq"],
 ] as const;
 
-/* ── AstroGenZ Logo — uses the uploaded JPEG ── */
-function AstroVerseLogo({ size = 52 }: { size?: number }) {
+/* ── AstroGenZ Logo ── */
+function AstroGenZLogo({ size = 52 }: { size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
@@ -39,7 +38,7 @@ export function Navbar({ brandName }: { brandName: string }) {
 
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2 text-sage">
-          <AstroVerseLogo size={52} />
+          <AstroGenZLogo size={52} />
           <span className="font-display text-xl font-semibold tracking-wide text-sage">
             {brandName}
           </span>
