@@ -489,10 +489,10 @@ export function AdminShell() {
                     onChange={(value) => updateService(index, { ...item, price: Number(value) || 0 })}
                   />
                   <EditorInput
-                    label="Discount % (0 = no discount, 10 = 10% off)"
+                    label="Discount % (0 = no discount, 10.5 = 10.5% off)"
                     value={String(item.discountPercent ?? 0)}
                     onChange={(value) => {
-                      const pct = Math.min(100, Math.max(0, Number(value) || 0));
+                      const pct = Math.min(100, Math.max(0, parseFloat(value) || 0));
                       updateService(index, { ...item, discountPercent: pct });
                     }}
                   />
@@ -594,10 +594,10 @@ export function AdminShell() {
                     onChange={(value) => updateCoupon(index, { ...item, code: value.toUpperCase().replace(/\s+/g, "") })}
                   />
                   <EditorInput
-                    label="Extra Discount % (e.g. 15 for 15% additional off)"
+                    label="Extra Discount % (e.g. 15.5 for 15.5% additional off)"
                     value={String(item.discountPercent)}
                     onChange={(value) => {
-                      const pct = Math.min(100, Math.max(0, Number(value) || 0));
+                      const pct = Math.min(100, Math.max(0, parseFloat(value) || 0));
                       updateCoupon(index, { ...item, discountPercent: pct });
                     }}
                   />
